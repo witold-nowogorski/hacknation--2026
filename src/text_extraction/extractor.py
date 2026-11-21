@@ -15,13 +15,10 @@ from docling.datamodel.pipeline_options import PdfPipelineOptions, RapidOcrOptio
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.doc import ContentLayer, DocItem, DoclingDocument, TableItem, TextItem
 
-from src.text_extraction.models import BBox, ExtractedDocument, TextBlock, sort_reading_order
+from src.text_extraction.models import BBox, ConversionSettings, ExtractedDocument, TextBlock, sort_reading_order
 
 logger = logging.getLogger(__name__)
 
-# The brief says key data sits on the first three pages; one extra page of margin.
-MAX_PAGES = 4
-DOCUMENT_TIMEOUT_S = 120.0
 # Page headers/footers are kept: dates and places of the letter sometimes land there.
 CONTENT_LAYERS = {ContentLayer.BODY, ContentLayer.FURNITURE}
 
@@ -31,23 +28,23 @@ _STATUS_NAMES = {
 }
 
 
-def build_converter(num_threads: int = 4) -> DocumentConverter:
+def build_converter(settings: ConversionSettings) -> DocumentConverter:
     """Create a CPU-only converter; build once and reuse (model loading is slow)."""
     options = PdfPipelineOptions(
         do_ocr=True,
         # Engine set explicitly: the "auto" default picks different engines per OS.
-        ocr_options=RapidOcrOptions(lang=["pl"], replace_broken_text_layer=True),
+        ocr_options=RapidOcrOptions(lang=list(settings.ocr_lang), replace_broken_text_layer=True),
         do_table_structure=True,
-        document_timeout=DOCUMENT_TIMEOUT_S,
-        accelerator_options=AcceleratorOptions(num_threads=num_threads, device="cpu"),
+        document_timeout=settings.document_timeout_s,
+        accelerator_options=AcceleratorOptions(num_threads=settings.num_threads, device="cpu"),
     )
-    options.table_structure_options.mode = TableFormerMode.FAST
+    options.table_structure_options.mode = TableFormerMode(settings.table_mode)
     return DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)})
 
 
-def extract_document(converter: DocumentConverter, pdf_path: Path) -> ExtractedDocument:
-    """Convert the first MAX_PAGES pages of a PDF; unreadable files yield status "failure"."""
-    result = converter.convert(pdf_path, raises_on_error=False, page_range=(1, MAX_PAGES))
+def extract_document(converter: DocumentConverter, pdf_path: Path, max_pages: int) -> ExtractedDocument:
+    """Convert the first max_pages pages of a PDF; unreadable files yield status "failure"."""
+    result = converter.convert(pdf_path, raises_on_error=False, page_range=(1, max_pages))
     errors = tuple(error.error_message for error in result.errors)
     if errors:
         logger.warning("Docling reported errors for %s: %s", pdf_path, errors)

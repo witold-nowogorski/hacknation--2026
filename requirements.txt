@@ -4,7 +4,11 @@ docling>=2.151,<3
 # OCR engine used by Docling for scanned pages (pip-installable, Polish support)
 rapidocr>=3.10,<4
 onnxruntime>=1.32
+# Typed settings and validated data (already a Docling dependency, used directly)
+pydantic>=2.14
 # Parsing organiser's expected-JSON files (they contain // comments)
 json5>=0.17
 # Data analysis / reports
 pandas>=3.1
+# Tests
+pytest>=9.2

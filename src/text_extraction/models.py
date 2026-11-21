@@ -1,11 +1,26 @@
-"""Result types of text extraction, independent of Docling."""
+"""Settings and result types of text extraction, independent of Docling."""
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from pydantic import BaseModel, ConfigDict
+
 # Blocks whose tops differ by at most this many PDF points are on the same line.
 LINE_TOLERANCE_PT = 3.0
+
+
+class ConversionSettings(BaseModel):
+    """Docling conversion parameters; defaults are the CPU benchmark winners (see extractor)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    # The brief says key data sits on the first three pages; one extra page of margin.
+    max_pages: int = 4
+    document_timeout_s: float = 120.0
+    ocr_lang: tuple[str, ...] = ("pl",)
+    table_mode: Literal["fast", "accurate"] = "fast"
+    num_threads: int = 4
 
 
 @dataclass(frozen=True, slots=True)
