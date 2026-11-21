@@ -1,4 +1,4 @@
-"""PDF -> ExtractedDocument with Docling.
+"""PDF -> Conversion (Docling's document) -> ExtractedDocument (our text blocks).
 
 Pipeline choice (CPU benchmark on dane/): standard pipeline with layout analysis,
 TableFormer in FAST mode (needed: bank transfers are two-column label/value tables and
@@ -8,12 +8,14 @@ text layer. Full-page OCR and the VLM pipeline were slower and less accurate.
 
 import logging
 from pathlib import Path
+from typing import Literal
 
 from docling.datamodel.accelerator_options import AcceleratorOptions
 from docling.datamodel.base_models import ConversionStatus, InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions, RapidOcrOptions, TableFormerMode
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.doc import ContentLayer, DocItem, DoclingDocument, TableItem, TextItem
+from pydantic import BaseModel
 
 from src.text_extraction.models import BBox, ConversionSettings, ExtractedDocument, TextBlock, sort_reading_order
 
@@ -42,25 +44,49 @@ def build_converter(settings: ConversionSettings) -> DocumentConverter:
     return DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)})
 
 
-def extract_document(converter: DocumentConverter, pdf_path: Path, max_pages: int) -> ExtractedDocument:
+class Conversion(BaseModel):
+    """Docling's own result for one PDF. This is what gets cached: converting is the slow step,
+    and keeping Docling's document lets our block mapping change without re-converting."""
+
+    status: Literal["success", "partial_success", "failure"]
+    page_count: int
+    errors: tuple[str, ...] = ()
+    document: DoclingDocument | None = None
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "failure" and self.document is not None
+
+
+def convert(converter: DocumentConverter, pdf_path: Path, max_pages: int) -> Conversion:
     """Convert the first max_pages pages of a PDF; unreadable files yield status "failure"."""
     result = converter.convert(pdf_path, raises_on_error=False, page_range=(1, max_pages))
     errors = tuple(error.error_message for error in result.errors)
     if errors:
         logger.warning("Docling reported errors for %s: %s", pdf_path, errors)
+    status = _STATUS_NAMES.get(result.status, "failure")
+    return Conversion(
+        status=status,
+        page_count=result.input.page_count or 0,
+        errors=errors,
+        document=result.document if status != "failure" else None,
+    )
 
+
+def to_extracted_document(pdf_path: Path, conversion: Conversion) -> ExtractedDocument:
+    """Text blocks of a converted PDF in reading order."""
     blocks: list[TextBlock] = []
-    if result.document is not None and result.status != ConversionStatus.FAILURE:
-        blocks = [block for item, _ in result.document.iterate_items(
+    if conversion.document is not None:
+        blocks = [block for item, _ in conversion.document.iterate_items(
             included_content_layers=CONTENT_LAYERS, traverse_pictures=True,
-        ) if (block := _to_block(item, result.document))]
+        ) if (block := _to_block(item, conversion.document))]
 
     return ExtractedDocument(
         source=pdf_path,
         blocks=tuple(sort_reading_order(blocks)),
-        page_count=result.input.page_count or 0,
-        status=_STATUS_NAMES.get(result.status, "failure"),
-        errors=errors,
+        page_count=conversion.page_count,
+        status=conversion.status,
+        errors=conversion.errors,
     )
 
 

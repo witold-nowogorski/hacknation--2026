@@ -12,3 +12,5 @@ json5>=0.17
 pandas>=3.1
 # Tests
 pytest>=9.2
+# LLM client for OpenAI-compatible endpoints (EU-hosted, open-weight models)
+openai>=3.57

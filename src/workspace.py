@@ -12,6 +12,7 @@ class Workspace:
     input_dir: Path  # <case>/*.pdf to process
     output_dir: Path  # <case>/<file>.json results (scored)
     eval_data_dir: Path  # training cases with reference JSONs
+    doc_types_dir: Path  # config/doc_types/<name>/doc_type.toml
     models_dir: Path  # Docling models
     cache_dir: Path  # cached Docling conversions and LLM responses
     runs_dir: Path  # artifacts of each evaluation run (git-ignored)

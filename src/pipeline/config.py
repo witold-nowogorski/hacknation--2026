@@ -2,18 +2,9 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.classification.keyword_classifier import KeywordClassifierSettings
+from src.inference.llm_client import LlmSettings
 from src.text_extraction.models import ConversionSettings
-
-
-class LlmSettings(BaseModel):
-    """OpenAI-compatible LLM endpoint; the API key is read from the environment, never stored here."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    base_url: str
-    model: str
-    api_key_env: str = "LLM_API_KEY"
-    temperature: float = 0.0
 
 
 class PipelineConfig(BaseModel):
@@ -24,4 +15,5 @@ class PipelineConfig(BaseModel):
     name: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")  # used in run and report file names
     description: str = ""  # what this variant tests
     conversion: ConversionSettings = ConversionSettings()
+    classification: KeywordClassifierSettings = KeywordClassifierSettings()
     llm: LlmSettings | None = None  # None = rules only

@@ -7,35 +7,44 @@ Run from the repo root:  python -m src.run
 """
 
 import logging
+import os
 from pathlib import Path
 from typing import Literal
 
 from src.experiments.experiment import Experiment, select_experiments
 from src.experiments.runner import ExperimentRunner
+from src.inference.llm_client import LlmSettings
 from src.pipeline.config import PipelineConfig
 from src.pipeline.documents import find_documents, write_result
 from src.pipeline.null_pipeline import NullPipeline
+from src.pipeline.staged_pipeline import StagedPipeline
 from src.workspace import Workspace
 
 ROOT = Path(__file__).resolve().parents[1]
 
 # --- Settings ---------------------------------------------------------------
 MODE: Literal["run", "eval"] = "run"
-RUN_EXPERIMENT = "null-baseline"  # pipeline used in MODE = "run"
-EVAL_EXPERIMENTS = ["null-baseline"]  # evaluated in this order in MODE = "eval"
+RUN_EXPERIMENT = "keywords-v1"  # pipeline used in MODE = "run"
+EVAL_EXPERIMENTS = ["keywords-v1"]  # evaluated in this order in MODE = "eval"
 EVAL_CASES: list[str] | None = None  # e.g. ["przyklad_01", "negatywne"] for a quick run; None = all
 LOG_LEVEL = logging.INFO
+ENV_FILE = ROOT / ".env"  # secrets such as LLM_API_KEY; git-ignored
 
 WORKSPACE = Workspace(
     root=ROOT,
     input_dir=ROOT / "dane" / "input",
     output_dir=ROOT / "dane" / "output",
     eval_data_dir=ROOT / "dane",
+    doc_types_dir=ROOT / "config" / "doc_types",
     models_dir=ROOT / "models",
     cache_dir=ROOT / ".cache",
     runs_dir=ROOT / "traces" / "runs",
     reports_dir=ROOT / "eval" / "reports",
 )
+
+# --- LLM endpoints ----------------------------------------------------------
+PSNC_URL = "https://llm.hpc.psnc.pl/v1"  # PSNC Poznań: EU-hosted, OpenAI-compatible, open-weight models
+BIELIK_11B = LlmSettings(base_url=PSNC_URL, model="Bielik-11B-v3.0-Instruct")
 
 # --- Experiments ------------------------------------------------------------
 EXPERIMENTS = [
@@ -43,14 +52,33 @@ EXPERIMENTS = [
         name="null-baseline",
         description="Recognises nothing: F1 floor and smoke test of the evaluation loop.",
     )),
+    Experiment(StagedPipeline, PipelineConfig(
+        name="keywords-v1",
+        description="Cached Docling text + keyword classifier from config/doc_types; no field extraction yet.",
+    )),
 ]
 # ----------------------------------------------------------------------------
 
 logger = logging.getLogger(__name__)
 
+# Libraries that log every page or model load at INFO.
+NOISY_LIBRARIES = ("docling", "docling_core", "RapidOCR", "rapidocr")
+
 
 def configure_logging(level: int) -> None:
     logging.basicConfig(level=level, format="%(asctime)s %(levelname)-7s %(message)s", datefmt="%H:%M:%S")
+    for library in NOISY_LIBRARIES:
+        logging.getLogger(library).setLevel(logging.WARNING)
+
+
+def load_env_file(path: Path) -> None:
+    """Put `KEY=value` lines of a .env file into the environment; real environment variables win."""
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        key, separator, value = line.partition("=")
+        if separator and not line.lstrip().startswith("#"):
+            os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
 
 
 def process_input(experiment: Experiment, workspace: Workspace) -> None:
@@ -66,6 +94,7 @@ def process_input(experiment: Experiment, workspace: Workspace) -> None:
 
 def main() -> None:
     configure_logging(LOG_LEVEL)
+    load_env_file(ENV_FILE)
     match MODE:
         case "run":
             [experiment] = select_experiments(EXPERIMENTS, [RUN_EXPERIMENT])

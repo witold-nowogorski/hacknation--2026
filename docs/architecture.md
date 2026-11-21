@@ -65,24 +65,27 @@ Przepływ danych jest jednokierunkowy; etapy wymieniają się typowanymi obiekta
 
 ```
 config/doc_types/<typ>/
-  config.yaml      # słowa kluczowe, pola (etykiety, typ wartości, metoda), struktura JSON
+  doc_type.toml    # klasyfikacja (słowa kluczowe z wagami); później pola (etykiety, typ wartości, metoda)
   prompt.md        # instrukcja dla LLM (tylko jeśli typ ma pola LLM)
-  <słownik>.yaml   # np. 12 powodów odwołania: id → kanoniczny opis
 ```
 
-Szkic `config.yaml` dla przelewu:
+Format TOML (`tomllib` ze standardowej biblioteki – bez dodatkowej zależności). Plik jest walidowany modelem Pydantic przy wczytaniu (`src/doc_types.py`); błąd configu zatrzymuje program ze ścieżką pliku. Obecny stan (klasyfikacja) i szkic pól dla przelewu:
 
-```yaml
-classification:
-  keywords: ["przelew", "rachunek odbiorcy", "kwota operacji"]
-fields:
-  z_rachunku:    {labels: ["Rachunek obciążany", "Z rachunku"], type: account}
-  na_rachunek:   {labels: ["Rachunek odbiorcy", "Na rachunek"], type: account}
-  kwota:         {labels: ["Kwota operacji", "Kwota"], type: amount}
-  data_operacji: {labels: ["Data transakcji", "Data operacji"], type: date}
-  tytul:         {labels: ["Opis", "Tytuł"], type: text}
-  numer_transakcji: {labels: ["Nr ref.", "Numer transakcji"], type: text}
+```toml
+[classification]
+min_score = 4                       # minimalna suma wag, by uznać dokument za ten typ
+
+[classification.keywords]           # fraza → waga; ujemna waga = dowód przeciw
+"potwierdzenie" = 2
+"rachunek odbiorcy" = 3
+
+# faza C – pola:
+[fields.kwota]
+labels = ["Kwota operacji", "Kwota"]
+type = "amount"
 ```
+
+Klasyfikator (`KeywordClassifier`) szuka fraz na pierwszych `pages` stronach, ignorując wielkość liter i wszystkie białe znaki (tytuły typu „P E Ł N O M O C N I C T W O”); wygrywa typ z najwyższą sumą, jeśli osiąga `min_score` i nie remisuje z innym.
 
 Pola oznaczone `method: llm` (np. `czynnosc_powod_id`) trafiają do LLM zawsze; pozostałe tylko wtedy, gdy reguły nic nie znalazły.
 
@@ -99,7 +102,7 @@ Amount  = Annotated[float | None, BeforeValidator(normalize_amount)]   # "200,00
 
 ```mermaid
 flowchart LR
-    Y["config.yaml<br/>pole → type"] --> CM["pydantic.create_model"]
+    Y["doc_type.toml<br/>pole → type"] --> CM["pydantic.create_model"]
     R["rejestr typów<br/>nip, date, account, amount, …"] --> CM
     CM --> DM["model dokumentu"]
     DM --> U1["normalizacja wartości z reguł"]
@@ -170,7 +173,7 @@ flowchart LR
 
 ## 9. Dodanie nowego typu dokumentu
 
-1. Utwórz `config/doc_types/<typ>/config.yaml`: słowa kluczowe, pola z etykietami i typami wartości, struktura JSON.
+1. Utwórz `config/doc_types/<typ>/doc_type.toml`: słowa kluczowe klasyfikacji (później pola z etykietami i typami wartości, struktura JSON).
 2. Opcjonalnie `prompt.md` i słowniki, jeśli typ ma pola oceniane przez LLM.
 3. Dodaj przykłady z referencjami do `dane/` i uruchom ewaluację.
 
@@ -182,4 +185,3 @@ Kod się nie zmienia, chyba że potrzebny jest nowy rodzaj wartości (np. nowy f
 - `czynnosc_powod_id` = 12 nie występuje w danych treningowych – opis trzeba ustalić ze specyfikacji.
 - `pesel`: w szablonie liczba, w referencjach tekst.
 - Dokładny sposób liczenia F1 przez organizatora nie jest opublikowany.
-- Format configu: YAML wymaga dodania `pyyaml` do `requirements.txt`.
