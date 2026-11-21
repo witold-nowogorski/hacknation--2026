@@ -38,10 +38,11 @@ class RunInfo(BaseModel):
 
 
 class EvalReport(BaseModel):
-    """Run info, the pipeline config snapshot and the scores."""
+    """Run info, snapshots of everything configurable (pipeline config, document types) and the scores."""
 
     run: RunInfo
     config: dict[str, Any]
+    doc_types: dict[str, Any] = {}  # config/doc_types/* as loaded: keyword tuning changes results too
     scores: EvalScores
 
 

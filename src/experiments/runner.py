@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from time import perf_counter
 
+from src.doc_types import load_doc_types
 from src.evaluation.evaluator import NO_TYPE, DocumentEvaluation, Evaluator, format_scores
 from src.experiments.experiment import Experiment
 from src.experiments.reports import EvalReport, ReportStore, RunInfo, dataset_id, format_leaderboard, git_revision
@@ -78,6 +79,8 @@ class ExperimentRunner:
                 git_dirty=dirty,
             ),
             config=experiment.config.model_dump(mode="json"),
+            doc_types={name: doc_type.model_dump(mode="json")
+                       for name, doc_type in load_doc_types(self._workspace.doc_types_dir).items()},
             scores=evaluator.scores(),
         )
 
