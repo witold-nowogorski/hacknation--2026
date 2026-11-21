@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 from typing import Literal
 
+from src.classification.keyword_classifier import KeywordClassifierSettings
 from src.experiments.experiment import Experiment, select_experiments
 from src.experiments.runner import ExperimentRunner
 from src.inference.llm_client import LlmSettings
@@ -24,8 +25,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # --- Settings ---------------------------------------------------------------
 MODE: Literal["run", "eval"] = "run"
-RUN_EXPERIMENT = "keywords-v1"  # pipeline used in MODE = "run"
-EVAL_EXPERIMENTS = ["keywords-v1"]  # evaluated in this order in MODE = "eval"
+RUN_EXPERIMENT = "keywords-2pages"  # pipeline used in MODE = "run"
+EVAL_EXPERIMENTS = ["keywords-2pages"]  # evaluated in this order in MODE = "eval"
 EVAL_CASES: list[str] | None = None  # e.g. ["przyklad_01", "negatywne"] for a quick run; None = all
 LOG_LEVEL = logging.INFO
 ENV_FILE = ROOT / ".env"  # secrets such as LLM_API_KEY; git-ignored
@@ -55,6 +56,11 @@ EXPERIMENTS = [
     Experiment(StagedPipeline, PipelineConfig(
         name="keywords-v1",
         description="Cached Docling text + keyword classifier from config/doc_types; no field extraction yet.",
+    )),
+    Experiment(StagedPipeline, PipelineConfig(
+        name="keywords-2pages",
+        description="keywords-v1, but keywords are searched on the first two pages (long appeal headers).",
+        classification=KeywordClassifierSettings(pages=2),
     )),
 ]
 # ----------------------------------------------------------------------------

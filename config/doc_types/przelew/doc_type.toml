@@ -1,0 +1,15 @@
+# Potwierdzenie przelewu (opłata skarbowa od pełnomocnictwa, wpis od odwołania).
+
+[classification]
+min_score = 3
+
+[classification.keywords]
+"przelew" = 2              # also matches "przelewu"
+"potwierdzenie" = 1
+"rachunek" = 1
+"kwota" = 1
+"pln" = 1
+"odbiorca" = 1
+"zleceniodawca" = 1
+"data operacji" = 1
+"data transakcji" = 1

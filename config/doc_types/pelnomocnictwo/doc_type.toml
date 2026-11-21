@@ -1,0 +1,16 @@
+# Pełnomocnictwo do reprezentowania wykonawcy w postępowaniu odwoławczym.
+# Appeals often mention "pełnomocnictwo" too, so the title alone must not reach min_score.
+
+[classification]
+min_score = 3
+
+[classification.keywords]
+"pełnomocnictwo" = 2
+"mocodawca" = 2
+"ustanawiam" = 2
+"udzielam" = 1
+"upoważni" = 1             # upoważniam / upoważnienie
+"umocowan" = 1             # umocowany / umocowanie / umocowania
+"do reprezentowania" = 1
+"pełnomocnik" = 1
+"niżej podpisany" = 1

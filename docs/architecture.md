@@ -45,6 +45,8 @@ Błąd pojedynczego pliku (uszkodzony PDF, błąd API) → log z nazwą pliku, z
 | 3–5 | `src/extraction/` | reguły, typy wartości Pydantic, budowa modelu z configu, wywołanie LLM |
 | ewaluacja | `src/evaluation/` | porównanie z referencją, F1 (`Evaluator` liczy przyrostowo) |
 | eksperymenty | `src/experiments/` | `Experiment` (klasa pipeline'u + config), `ExperimentRunner`, artefakty przebiegu, historia raportów i ranking |
+| LLM | `src/inference/` | `LlmClient`: API zgodne z OpenAI (PSNC, Bielik-11B), odpowiedzi JSON wg schematu Pydantic, cache odpowiedzi, liczniki tokenów |
+| wspólne | `src/cache.py`, `src/doc_types.py`, `src/workspace.py` | cache dyskowy, wczytywanie `config/doc_types/*`, ścieżki |
 
 ```mermaid
 flowchart LR
@@ -144,7 +146,7 @@ sequenceDiagram
     X->>X: wartość obecna w tekście? jeśli nie → null
 ```
 
-Maksymalnie jedno wywołanie LLM na dokument. Klient: SDK `openai` z `base_url` dostawcy (bez LangChain); dostawca i model w ustawieniach, klucz w `.env`.
+Maksymalnie jedno wywołanie LLM na dokument. Klient: `LlmClient` (SDK `openai` z `base_url` dostawcy, bez LangChain); endpoint i model w `LlmSettings` (`src/run.py`), klucz w `.env`. Wpis w `.cache/llm/` przechowuje zapytanie obok odpowiedzi – każdą wartość z LLM można odtworzyć do promptu. Model zwraca wartości surowe (np. „20 marca 2026 roku”), więc zawsze przechodzą przez nasze normalizatory.
 
 ## 7. Cache, trace, determinizm
 
@@ -165,7 +167,7 @@ flowchart LR
 ```
 
 - Eksperyment = klasa pipeline'u + `PipelineConfig`; lista w `src/run.py`, wybór przez `EVAL_EXPERIMENTS`, szybki podzbiór przez `EVAL_CASES`.
-- Raport (commitowany) zawiera commit gita, czas na dokument, pełny config i wyniki; ranking porównuje tylko przebiegi na tym samym zbiorze dokumentów (`dataset_id`).
+- Raport (commitowany) zawiera commit gita, czas na dokument, pełny config, snapshot `config/doc_types/*` i wyniki; ranking porównuje tylko przebiegi na tym samym zbiorze dokumentów (`dataset_id`).
 - Cały zbiór treningowy, bez podziału na dev/holdout (brak uczenia; holdout z tego samego generatora nie mówi nic o realnych danych).
 - F1 na polach: JSON spłaszczony do liści `ścieżka → wartość`; trafienie = TP, zła wartość = FP + FN, brak = FN, null po obu stronach pomijany; elementy list dopasowywane po największej zgodności.
 - Dwie liczby: **strict** (dokładna równość) i **znormalizowana** – różnica to straty na formatowaniu.

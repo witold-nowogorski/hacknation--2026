@@ -1,0 +1,17 @@
+# Odwołanie do Prezesa Krajowej Izby Odwoławczej.
+# Keywords are searched on the first page, ignoring case and whitespace.
+
+[classification]
+min_score = 4
+
+[classification.keywords]
+"odwołujący" = 2
+"prezes krajowej izby odwoławczej" = 2   # addressee; KIO rulings say "Prezesa", which does not match
+"wnoszę" = 1
+"art. 513" = 1                           # legal basis of an appeal (Pzp)
+"odwołanie" = 1
+"zamawiający" = 1
+# KIO rulings name the same parties and the appeal, but are not appeals.
+"sygn. akt" = -5
+"wyrok" = -5
+"postanowienie" = -3
