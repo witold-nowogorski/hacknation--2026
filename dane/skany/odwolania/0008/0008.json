@@ -1,0 +1,38 @@
+{
+  "OdwolanieKIO": {
+    "data": "2026-04-20",
+    "czynnosc_dzien": "2026-04-10",
+    "czynnosc_powod_id": 3,
+    "czynnosc_opis": "Decyzja o wykluczeniu wykonawcy",
+    "miejscowosc": "Warszawa"
+  },
+  "Odwolujacy": [
+    {
+      "krs": "9994328029",
+      "nazwa": "Orbisol Budownictwo Sp. z o.o.",
+      "nip": "9999929154",
+      "regon": null,
+      "przez-pelnomocnika": 1,
+      "pelnomocnik": {
+        "imie_nazwisko": "Rafał Malinowski",
+        "nazwa": "Cieślak Gajda Kancelaria Prawna sp. p.",
+        "mail": "r.malinowski@cieslak-kancelaria.example"
+      }
+    }
+  ],
+  "Zamawiajacy": [
+    {
+      "krs": null,
+      "nazwa": "Uniwersytet Przyrodniczo-Techniczny w Modrzewcu",
+      "nip": "9993202830",
+      "regon": null,
+      "prowadzacy_postepowanie": null
+    }
+  ],
+  "ZamowieniePubliczne": {
+    "numer_bzp": "2026/BZP00239965/01",
+    "numer_postepowania": "ZP/134/2026",
+    "numer_ted": "142793-2026",
+    "tytul": "Budowa sali gimnastycznej wraz z zapleczem sanitarnym i infrastrukturą towarzyszącą"
+  }
+}

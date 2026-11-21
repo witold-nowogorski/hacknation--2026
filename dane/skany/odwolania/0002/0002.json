@@ -1,0 +1,38 @@
+{
+  "OdwolanieKIO": {
+    "data": "2026-04-10",
+    "czynnosc_dzien": "2026-04-01",
+    "czynnosc_powod_id": 1,
+    "czynnosc_opis": "Decyzja o odrzuceniu oferty",
+    "miejscowosc": "Białystok"
+  },
+  "Odwolujacy": [
+    {
+      "krs": "9994354396",
+      "nazwa": "Medicor Infrastruktura S.A.",
+      "nip": "9995090281",
+      "regon": "999368597",
+      "przez-pelnomocnika": 1,
+      "pelnomocnik": {
+        "imie_nazwisko": "Mateusz Wierzbicki",
+        "nazwa": "Kancelaria Adwokacka adw. Mateusz Wierzbicki",
+        "mail": "m.wierzbicki@wierzbicki-kancelaria.example"
+      }
+    }
+  ],
+  "Zamawiajacy": [
+    {
+      "krs": null,
+      "nazwa": "Powiatowy Zespół Szkół Technicznych w Wrzosowie",
+      "nip": null,
+      "regon": null,
+      "prowadzacy_postepowanie": null
+    }
+  ],
+  "ZamowieniePubliczne": {
+    "numer_bzp": null,
+    "numer_postepowania": "ZG.261.8.2026",
+    "numer_ted": "570628-2026",
+    "tytul": "Termomodernizacja budynków użyteczności publicznej wraz z montażem instalacji fotowoltaicznej"
+  }
+}

@@ -51,7 +51,7 @@ Odpowiedzialny za:
 
 - analizę dokumentów,
 
-- klasyfikację dokumentów,
+- klasyfikację dokumentów na podstawie ich zawartości (uwaga! nazwa pliku może być różna - nie sugerujcie się nazwą pliku),
 
 - ekstrakcję informacji,
 
@@ -142,6 +142,8 @@ Ocena zostanie przeprowadzona na dwóch zbiorach danych:
 
 Udostępniony uczestnikom podczas realizacji wyzwania dostępny w katalogu dane. Zbiór danych zawiera też kategorie dokumentów, które NIE powinny być zidentyfikowane (zwrócić pusty plik `.json`).
 
+dane negatywne (które nie powinny zostać sklasyfikowane) umieszczone zostały w wybranych przykładach oraz w katalogu https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026/tree/main/dane/negatywne.
+
 ### Zbiór testowy
 
 Nieudostępniany uczestnikom.
@@ -153,7 +155,9 @@ Wyniki wygenerowane przez rozwiązanie zostaną porównane z zestawem danych ref
 Podstawową miarą jakości będzie [wskaźnik F1](https://en.wikipedia.org/wiki/F-score).
 
 ## Parametry maszyny na której będą testowane rozwiązania
-Będzie to laptop biurowy - 16GB RAM i Intel i7. Bez GPU. To oznacza, że dostarczone rozwiązanie, jeśli korzysta z LLM to powinno korzystać z API i być dostarczone z kluczem API. Obiecujemy nie wykorzystywać w innym celu niż proces testowy. API musi być świadczone przez firmę i z serwerów znajdujących się w EU/EOG.
+Jest ok. 30 zespołów zainteresowanych. Musimy zmienić planowany sposób oceny. Stay tuned.
+
+Dostarczone rozwiązanie, jeśli korzysta z LLM to powinno korzystać z API i być dostarczone z kluczem API. Obiecujemy nie wykorzystywać w innym celu niż proces testowy. API musi być świadczone przez firmę która posiada określony zakres i miejsce przetwarzania danych w swojej Polityce Prywatności, i z serwerów znajdujących się w EU/EOG.
 
 # 7. Kryteria oceny
 
@@ -172,6 +176,17 @@ Ocena zgodności wyników z danymi referencyjnymi na nieznanym zbiorze testowym.
 ### 2. Elastyczność i możliwość rozbudowy rozwiązania – 50%
 
 Ocena uwzględniać będzie:
-* 1-20 pkt za moc modelu LLM. Im mocniejszy model liczony w bilionach parametrów, tym mniejsza ilość punktów. Innymi słowy, zależy nam na znalezieniu równowagi między skutecznością ekstrakcji, a kosztami.
+* 1-20 pkt za moc modelu LLM. Im mocniejszy model liczony w miliardach parametrów, tym mniejsza ilość punktów. Innymi słowy, zależy nam na znalezieniu równowagi między skutecznością ekstrakcji, a kosztami. Poniżej więcej info.
 * 1-20 Łatwość dodawania nowych typów dokumentów i nowych klas danych bez konieczności przebudowy całego systemu.
 * 1-10 Inne ciekawe funkcje dodane do aplikacji (np. GUI)
+
+#### Sposób punktacji LLM
+W wyniku dyskusji z uczestnikami i zgłoszeń o potencjalnych sposobach manipulacji, pracujemy nad nowymi wytycznymi. stay tuned. 
+
+# Wyjątki
+
+## OCR po API
+Możecie wykorzystać OCR lokalny lub przez API. Jeśli przez API -> jego parametry będą liczone jak dla LLM i brane pod uwagę w procesie oceny.
+
+## Maksymalny czas przetwarzania
+Wasze rozwiązanie będzie testowane na 150 plikach PDF. Maksymalny czas przetwarzania całego tego zbioru to 45 minut.

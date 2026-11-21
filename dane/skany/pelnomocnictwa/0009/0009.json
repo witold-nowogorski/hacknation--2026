@@ -1,0 +1,31 @@
+{
+  "mocodawca": [
+    {
+      "data": {
+        "imie_nazwisko": null,
+        "krs": "9996316141",
+        "nazwa": "Asterion Drogi i Mosty Spółka z ograniczoną odpowiedzialnością",
+        "nip": "9994295420",
+        "typ": "osoba_prawna"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "Żaneta Rybak"
+        },
+        {
+          "imie_nazwisko": "Jakub Zawadzki"
+        }
+      ]
+    }
+  ],
+  "pelnomocnicy": [
+    {
+      "imie_nazwisko": "Anna Topolska",
+      "pesel": "68091502944"
+    },
+    {
+      "imie_nazwisko": "Piotr Wróbel",
+      "pesel": "82070226436"
+    }
+  ]
+}

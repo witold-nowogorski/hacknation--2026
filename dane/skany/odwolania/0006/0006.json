@@ -1,0 +1,38 @@
+{
+  "OdwolanieKIO": {
+    "data": "2026-05-21",
+    "czynnosc_dzien": "2026-05-11",
+    "czynnosc_powod_id": 7,
+    "czynnosc_opis": "Zaniechanie odrzucenia oferty",
+    "miejscowosc": "Bydgoszcz"
+  },
+  "Odwolujacy": [
+    {
+      "krs": "9997873010",
+      "nazwa": "Nordenix Automatyka Sp. z o.o.",
+      "nip": "9991785572",
+      "regon": "999885921",
+      "przez-pelnomocnika": 1,
+      "pelnomocnik": {
+        "imie_nazwisko": "Sylwia Sikora",
+        "nazwa": "Kancelaria Prawna Olszewski & Partnerzy sp. k.",
+        "mail": "s.sikora@olszewski-kancelaria.example"
+      }
+    }
+  ],
+  "Zamawiajacy": [
+    {
+      "krs": null,
+      "nazwa": "Muzeum Regionalne w Brzozowcu",
+      "nip": "9996584714",
+      "regon": "999319720",
+      "prowadzacy_postepowanie": null
+    }
+  ],
+  "ZamowieniePubliczne": {
+    "numer_bzp": null,
+    "numer_postepowania": "DZP.260.99.2026",
+    "numer_ted": "427452-2026",
+    "tytul": "Przebudowa drogi powiatowej wraz z budową chodnika i oświetlenia ulicznego"
+  }
+}

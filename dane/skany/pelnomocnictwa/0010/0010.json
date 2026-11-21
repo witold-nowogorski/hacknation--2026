@@ -1,0 +1,28 @@
+{
+  "mocodawca": [
+    {
+      "data": {
+        "imie_nazwisko": "Paweł Brzozowski",
+        "krs": null,
+        "nazwa": null,
+        "nip": "9996635512",
+        "typ": "osoba_fizyczna"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "Paweł Brzozowski"
+        }
+      ]
+    }
+  ],
+  "pelnomocnicy": [
+    {
+      "imie_nazwisko": "Andrzej Wróbel",
+      "pesel": null
+    },
+    {
+      "imie_nazwisko": "Monika Zawadzka",
+      "pesel": null
+    }
+  ]
+}

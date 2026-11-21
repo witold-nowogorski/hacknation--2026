@@ -1,0 +1,38 @@
+{
+  "OdwolanieKIO": {
+    "data": "2026-03-27",
+    "czynnosc_dzien": "2026-03-23",
+    "czynnosc_powod_id": 11,
+    "czynnosc_opis": "Opis przedmiotu zamówienia (OPZ)",
+    "miejscowosc": "Wrocław"
+  },
+  "Odwolujacy": [
+    {
+      "krs": null,
+      "nazwa": "Medicor IT Solutions S.A.",
+      "nip": "9992326754",
+      "regon": "999749508",
+      "przez-pelnomocnika": 1,
+      "pelnomocnik": {
+        "imie_nazwisko": "Grzegorz Kaczmarek",
+        "nazwa": "Kancelaria Adwokacka adw. Grzegorz Kaczmarek",
+        "mail": "g.kaczmarek@kaczmarek-kancelaria.example"
+      }
+    }
+  ],
+  "Zamawiajacy": [
+    {
+      "krs": null,
+      "nazwa": "Regionalne Centrum Zdrowia Publicznego w Dębnicy Górnej",
+      "nip": "9996245053",
+      "regon": null,
+      "prowadzacy_postepowanie": null
+    }
+  ],
+  "ZamowieniePubliczne": {
+    "numer_bzp": "2026/BZP00879135/03",
+    "numer_postepowania": "ZP/12/2026",
+    "numer_ted": "429185-2026",
+    "tytul": "Rozbudowa oczyszczalni ścieków wraz z modernizacją sieci kanalizacyjnej"
+  }
+}

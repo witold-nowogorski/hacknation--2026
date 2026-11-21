@@ -1,0 +1,24 @@
+{
+  "mocodawca": [
+    {
+      "data": {
+        "imie_nazwisko": null,
+        "krs": "9998927009",
+        "nazwa": "Kalinex Logistyka Spółka z ograniczoną odpowiedzialnością",
+        "nip": "9990864252",
+        "typ": "osoba_prawna"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "Szymon Jabłoń"
+        }
+      ]
+    }
+  ],
+  "pelnomocnicy": [
+    {
+      "imie_nazwisko": "Żaneta Olszewska",
+      "pesel": null
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "mocodawca": [
+    {
+      "data": {
+        "imie_nazwisko": null,
+        "krs": "9998767758",
+        "nazwa": "Tervana Systemy Informatyczne sp. k.",
+        "nip": "9993437059",
+        "typ": "osoba_prawna"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "Dorota Grabowska"
+        }
+      ]
+    },
+    {
+      "data": {
+        "imie_nazwisko": null,
+        "krs": "9990349003",
+        "nazwa": "Lumidor Budownictwo spółka z ograniczoną odpowiedzialnością",
+        "nip": "9999882984",
+        "typ": "osoba_prawna"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "Łukasz Sosnowski"
+        }
+      ]
+    }
+  ],
+  "pelnomocnicy": [
+    {
+      "imie_nazwisko": "Dorota Kubiak",
+      "pesel": "90082629103"
+    }
+  ]
+}

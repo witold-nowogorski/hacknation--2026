@@ -1,0 +1,24 @@
+{
+  "mocodawca": [
+    {
+      "data": {
+        "imie_nazwisko": null,
+        "krs": "9994354396",
+        "nazwa": "Medicor Infrastruktura S.A.",
+        "nip": "9995090281",
+        "typ": "osoba_prawna"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "Grzegorz Jaworski"
+        }
+      ]
+    }
+  ],
+  "pelnomocnicy": [
+    {
+      "imie_nazwisko": "Mateusz Wierzbicki",
+      "pesel": null
+    }
+  ]
+}

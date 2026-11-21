@@ -1,0 +1,38 @@
+{
+  "OdwolanieKIO": {
+    "data": "2026-06-05",
+    "czynnosc_dzien": "2026-06-02",
+    "czynnosc_powod_id": 6,
+    "czynnosc_opis": "Odpowiedzi/wyjaśnienia do SWZ",
+    "miejscowosc": "Łódź"
+  },
+  "Odwolujacy": [
+    {
+      "krs": "9996316141",
+      "nazwa": "Asterion Drogi i Mosty Sp. z o.o.",
+      "nip": "9994295420",
+      "regon": null,
+      "przez-pelnomocnika": 0,
+      "pelnomocnik": {
+        "imie_nazwisko": null,
+        "nazwa": null,
+        "mail": null
+      }
+    }
+  ],
+  "Zamawiajacy": [
+    {
+      "krs": null,
+      "nazwa": "Miejski Ośrodek Sportu i Rekreacji w Olszanowie",
+      "nip": "9991408384",
+      "regon": null,
+      "prowadzacy_postepowanie": null
+    }
+  ],
+  "ZamowieniePubliczne": {
+    "numer_bzp": "2026/BZP00692455/03",
+    "numer_postepowania": "DA.ZP.242.13.2026",
+    "numer_ted": null,
+    "tytul": "Rozbudowa oczyszczalni ścieków wraz z modernizacją sieci kanalizacyjnej"
+  }
+}

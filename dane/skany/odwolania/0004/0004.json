@@ -1,0 +1,45 @@
+{
+  "OdwolanieKIO": {
+    "data": "2026-02-13",
+    "czynnosc_dzien": "2026-02-04",
+    "czynnosc_powod_id": 9,
+    "czynnosc_opis": "Decyzja o unieważnieniu postępowania",
+    "miejscowosc": "Wrocław"
+  },
+  "Odwolujacy": [
+    {
+      "krs": "9990692039",
+      "nazwa": "Arkomed Serwis S.A.",
+      "nip": "9996494661",
+      "regon": null,
+      "przez-pelnomocnika": 1,
+      "pelnomocnik": {
+        "imie_nazwisko": "Krzysztof Jodłowski",
+        "nazwa": "Kancelaria Radcy Prawnego Krzysztof Jodłowski",
+        "mail": "k.jodlowski@jodlowski-kancelaria.example"
+      }
+    }
+  ],
+  "Zamawiajacy": [
+    {
+      "krs": null,
+      "nazwa": "Zarząd Dróg Powiatowych w Brzozowcu",
+      "nip": "9992398073",
+      "regon": null,
+      "prowadzacy_postepowanie": 1
+    },
+    {
+      "krs": null,
+      "nazwa": "Zakład Gospodarki Komunalnej w Zielonkowie",
+      "nip": null,
+      "regon": "999806152",
+      "prowadzacy_postepowanie": 0
+    }
+  ],
+  "ZamowieniePubliczne": {
+    "numer_bzp": "2026/BZP00993292/01",
+    "numer_postepowania": "DZP.260.69.2026",
+    "numer_ted": null,
+    "tytul": "Rozbudowa oczyszczalni ścieków wraz z modernizacją sieci kanalizacyjnej"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "OdwolanieKIO": {
+    "data": "2026-03-31",
+    "czynnosc_dzien": "2026-03-26",
+    "czynnosc_powod_id": 5,
+    "czynnosc_opis": "Modyfikacja treści SWZ",
+    "miejscowosc": "Toruń"
+  },
+  "Odwolujacy": [
+    {
+      "krs": null,
+      "nazwa": "Paweł Brzozowski Asterion Usługi Techniczne",
+      "nip": "9996635512",
+      "regon": null,
+      "przez-pelnomocnika": 1,
+      "pelnomocnik": {
+        "imie_nazwisko": "Andrzej Wróbel",
+        "nazwa": "Kancelaria Radcy Prawnego Andrzej Wróbel",
+        "mail": "a.wrobel@wrobel-kancelaria.example"
+      }
+    }
+  ],
+  "Zamawiajacy": [
+    {
+      "krs": null,
+      "nazwa": "Miejski Ośrodek Sportu i Rekreacji w Olszanowie",
+      "nip": "9994796961",
+      "regon": null,
+      "prowadzacy_postepowanie": null
+    }
+  ],
+  "ZamowieniePubliczne": {
+    "numer_bzp": null,
+    "numer_postepowania": "ZP/107/2026",
+    "numer_ted": "209925-2026",
+    "tytul": "Dostawa energii elektrycznej do obiektów Zamawiającego w latach 2027-2028"
+  }
+}
