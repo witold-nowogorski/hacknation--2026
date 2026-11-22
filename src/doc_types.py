@@ -19,12 +19,16 @@ SCHEMA_FILE = "schema.json"
 
 
 class ClassificationRules(BaseModel):
-    """Keyword evidence for this type; a negative weight is evidence against it."""
+    """Keyword evidence for this type; a negative weight is evidence against it.
+
+    `keywords` count anywhere in the searched pages, `head_keywords` only at the top of the document.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     min_score: float
     keywords: dict[str, float]
+    head_keywords: dict[str, float] = {}
 
 
 class DocTypeConfig(BaseModel):

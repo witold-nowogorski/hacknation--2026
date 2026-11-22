@@ -88,7 +88,7 @@ labels = ["Kwota operacji", "Kwota"]
 type = "amount"
 ```
 
-Klasyfikator (`KeywordClassifier`) szuka fraz na pierwszych `pages` stronach, ignorując wielkość liter i wszystkie białe znaki (tytuły typu „P E Ł N O M O C N I C T W O”); wygrywa typ z najwyższą sumą, jeśli osiąga `min_score` i nie remisuje z innym.
+Klasyfikator (`KeywordClassifier`) szuka fraz `keywords` na pierwszych `pages` stronach, a fraz `head_keywords` tylko w nagłówku dokumentu (`head_chars` znaków) – tam dokument mówi, czym jest: orzeczenie KIO zaczyna się od „Sygn. akt … WYROK”, a prawdziwe odwołania cytują orzeczenia dopiero w uzasadnieniu (wykryte na skanach – ujemne słowa w całym tekście odrzucały prawdziwe odwołania). Dopasowanie ignoruje wielkość liter, białe znaki i polskie znaki diakrytyczne (OCR gubi ogonki: „ODWOLANIE”, „Odwołujacy”); wygrywa typ z najwyższą sumą, jeśli osiąga `min_score` i nie remisuje z innym.
 
 Pola oznaczone `method: llm` (np. `czynnosc_powod_id`) trafiają do LLM zawsze; pozostałe tylko wtedy, gdy reguły nic nie znalazły.
 

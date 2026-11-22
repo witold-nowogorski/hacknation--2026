@@ -1,4 +1,5 @@
 # Potwierdzenie przelewu (opłata skarbowa od pełnomocnictwa, wpis od odwołania).
+# Stems ("zleceni", "odbiorc", "nadawc") cover word forms and survive partial OCR damage.
 
 [classification]
 min_score = 3
@@ -9,7 +10,9 @@ min_score = 3
 "rachunek" = 1
 "kwota" = 1
 "pln" = 1
-"odbiorca" = 1
-"zleceniodawca" = 1
+"zleceni" = 1              # zleceniodawca, dane zlecenia
+"odbiorc" = 1              # odbiorca, rachunek odbiorcy
+"nadawc" = 1               # nadawca, rachunek nadawcy
+"kontrahent" = 1           # dane kontrahenta (bank statements)
 "data operacji" = 1
 "data transakcji" = 1

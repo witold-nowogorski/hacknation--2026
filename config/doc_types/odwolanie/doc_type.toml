@@ -1,5 +1,5 @@
 # Odwołanie do Prezesa Krajowej Izby Odwoławczej.
-# Keywords are searched on the first page, ignoring case and whitespace.
+# Keywords are searched on the first pages, ignoring case, whitespace and Polish diacritics.
 
 [classification]
 min_score = 4
@@ -11,7 +11,11 @@ min_score = 4
 "art. 513" = 1                           # legal basis of an appeal (Pzp)
 "odwołanie" = 1
 "zamawiający" = 1
-# KIO rulings name the same parties and the appeal, but are not appeals.
+
+# Only at the top of the document: KIO rulings start with these and name the same parties, while
+# real appeals cite rulings ("wyrok KIO ..., sygn. akt ...") further down, so anywhere else they
+# would reject genuine appeals.
+[classification.head_keywords]
 "sygn. akt" = -5
 "wyrok" = -5
-"postanowienie" = -3
+"postanowienie" = -5
