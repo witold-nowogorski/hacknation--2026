@@ -1,9 +1,9 @@
 """PDF -> Conversion (Docling's document) -> ExtractedDocument (our text blocks).
 
-Pipeline choice (CPU benchmark on dane/): standard pipeline with layout analysis,
-TableFormer in FAST mode (needed: bank transfers are two-column label/value tables and
-signature blocks become tables) and RapidOCR in Polish only where a page has no usable
-text layer. Full-page OCR and the VLM pipeline were slower and less accurate.
+Pipeline choice (CPU benchmarks on dane/, see docs/architecture.md): standard pipeline with
+layout analysis, TableFormer (bank transfers are two-column label/value tables, signature
+blocks become tables) and RapidOCR in Polish only where a page has no usable text layer, on
+the first pages only. Full-page OCR and the VLM pipeline were slower and less accurate.
 """
 
 import logging
@@ -33,15 +33,17 @@ _STATUS_NAMES = {
 
 def build_converter(settings: ConversionSettings) -> DocumentConverter:
     """Create a CPU-only converter with its models loaded; build once and reuse (loading is slow)."""
+    tables = settings.table_mode != "none"
     options = PdfPipelineOptions(
         do_ocr=True,
         # Engine set explicitly: the "auto" default picks different engines per OS.
         ocr_options=RapidOcrOptions(lang=list(settings.ocr_lang), replace_broken_text_layer=True),
-        do_table_structure=True,
+        do_table_structure=tables,
         document_timeout=settings.document_timeout_s,
         accelerator_options=AcceleratorOptions(num_threads=settings.num_threads, device="cpu"),
     )
-    options.table_structure_options.mode = TableFormerMode(settings.table_mode)
+    if tables:
+        options.table_structure_options.mode = TableFormerMode(settings.table_mode)
     converter = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)})
     converter.initialize_pipeline(InputFormat.PDF)  # load now, not inside the first document's conversion time
     return converter

@@ -15,7 +15,7 @@ Zasada: **reguły najpierw, LLM tylko tam, gdzie potrzebna ocena lub reguły zaw
 
 ```mermaid
 flowchart TD
-    A["input/#lt;sprawa#gt;/*.pdf"] --> B["1. Tekst<br/>Docling → markdown + tekst stron<br/>OCR, gdy brak warstwy tekstowej"]
+    A["input/#lt;sprawa#gt;/*.pdf"] --> B["1. Tekst<br/>Docling: 2 pierwsze strony, tabele ACCURATE<br/>OCR, gdy brak warstwy tekstowej"]
     B --> C{"2. Klasyfikacja<br/>słowa kluczowe z config"}
     C -- "brak typu" --> E["{}"]
     C -- "niejednoznaczne" --> CL["LLM: wybór typu"] --> C2{typ?}
@@ -149,14 +149,29 @@ sequenceDiagram
 
 Maksymalnie jedno wywołanie LLM na dokument. Klient: `LlmClient` (SDK `openai` z `base_url` dostawcy, bez LangChain); endpoint i model w `LlmSettings` (`src/run.py`), klucz w `.env`. Wpis w `.cache/llm/` przechowuje zapytanie obok odpowiedzi – każdą wartość z LLM można odtworzyć do promptu. Model zwraca wartości surowe (np. „20 marca 2026 roku”), więc zawsze przechodzą przez nasze normalizatory.
 
-## 7. Cache, trace, determinizm
+## 7. Konwersja i budżet czasu
+
+Ustawienia (`ConversionSettings`, wybrane pomiarem): pierwsze **2 strony**, TableFormer **ACCURATE**, RapidOCR (pl) tylko na stronach bez warstwy tekstowej, 4 wątki CPU. Pomiar: zimne konwersje wszystkich 226 dokumentów, Apple M4, tylko CPU.
+
+| Pytanie | Wynik | Decyzja |
+|---|---|---|
+| Na których stronach są wartości z referencji? | strona 1; wyjątek: `czynnosc_dzien` na stronie 2 (5/60 syntetycznych, 3/10 skanów); strony 3–4 nic nie dodają | `max_pages = 2`: skan odwołania 12,6–13,7 s → 5,9–6,9 s |
+| Tabele: FAST / ACCURATE / bez struktury | wartości w tekście: ACCURATE i „bez struktury” identycznie w każdym polu; FAST gubi 6 (rozbite komórki przelewów, podpisujący) | ACCURATE: wiersze „etykieta \| wartość” dla reguł, koszt ~0,1 s/PDF |
+| Czas na dokument | warstwa tekstowa 0,3–0,5 s; skan 1-stronicowy 2,2–2,6 s; skan odwołania 5,6 s (2,8 s/stronę); ładowanie modeli ~5 s raz na przebieg | – |
+| Pamięć | szczyt ~4,8 GB | mieści się w 16 GB |
+
+Projekcja 150 PDF-ów (50 spraw × odwołanie, pełnomocnictwo, przelew), sama konwersja: **1,0 min** bez skanów, 3,6 min przy 1/3 skanów, **8,6 min**, gdy wszystko jest skanem. Limit to 45 min, nasz cel ≤ 30 min: zostaje zapas na ~3× wolniejszy laptop i wywołania LLM, równoległość nie jest potrzebna.
+
+Jakość OCR: wartości w tekście na skanach 0,85 (przelew) – 0,97 (pełnomocnictwo) wobec 0,996–1,000 w PDF-ach z warstwą tekstową. Braki to błędy znaków (zgubione ogonki: „opłata” → „oplata”, pomylone litery: „pełnomocnictwa” → „peinomocnectwa”), nie układ strony. Kandydat na osobny eksperyment: większy model rozpoznawania PP-OCRv6 (obecnie `small`) – budżet czasu na to pozwala.
+
+## 8. Cache, trace, determinizm
 
 - `.cache/` – konwersje Docling i odpowiedzi LLM, klucz = hash pliku/wycinka + ustawienia.
 - `traces/` – dla każdego dokumentu: typ i wynik klasyfikacji, każde pole z metodą (`rule`/`llm`/`derived`) i fragmentem źródłowym.
 - `output/` – wyłącznie oceniane pliki JSON.
 - Deterministycznie: posortowane pliki, temperatura 0, cache.
 
-## 8. Ewaluacja
+## 9. Ewaluacja
 
 ```mermaid
 flowchart LR
@@ -178,7 +193,7 @@ flowchart LR
 - **Czas zimnego przebiegu**: czas konwersji każdego PDF-a jest zapisywany w cache razem z konwersją, więc raport pokazuje średni i maksymalny czas na dokument w każdym zbiorze również przy ciepłym cache.
 - Ryzyko realnych danych sprawdzamy osobno: zbiór `scans` organizatora (ścieżka OCR), opcjonalnie ręcznie opisane realne dokumenty.
 
-## 9. Dodanie nowego typu dokumentu
+## 10. Dodanie nowego typu dokumentu
 
 1. Utwórz `config/doc_types/<typ>/doc_type.toml`: słowa kluczowe klasyfikacji (później pola z etykietami i typami wartości, struktura JSON).
 2. Opcjonalnie `prompt.md` i słowniki, jeśli typ ma pola oceniane przez LLM.
@@ -186,11 +201,11 @@ flowchart LR
 
 Kod się nie zmienia, chyba że potrzebny jest nowy rodzaj wartości (np. nowy format identyfikatora) – wtedy jeden normalizator w rejestrze typów.
 
-## 10. Otwarte kwestie
+## 11. Otwarte kwestie
 
 - Negatywne dokumenty: README mówi „pusty plik .json”, przykładowe wyjście organizatora ma 0 bajtów; przyjmujemy `{}` – do potwierdzenia.
 - Słownik `czynnosc_powod_id` (1–12) jest w `dane/oczekiwane-json/czynnosc_powod_id_dict.md`; 12 = „Projektowane postanowienia umowy” nie występuje w danych treningowych.
 - `z_rachunku`/`na_rachunek`: w referencjach treningowych bez prefiksu `PL`, w skanach `z_rachunku` z prefiksem – wybór konwencji przez pomiar F1 na wszystkich zbiorach.
-- Organizator zapowiada zmianę sposobu oceny (README, „stay tuned”) – limit czasu: 150 PDF-ów w 45 minut.
+- Organizator zapowiada zmianę sposobu oceny (README, „stay tuned”) – limit czasu: 150 PDF-ów w 45 minut (projekcja w sekcji 7).
 - `pesel`: w szablonie liczba, w referencjach tekst.
 - Dokładny sposób liczenia F1 przez organizatora nie jest opublikowany.

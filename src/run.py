@@ -20,14 +20,15 @@ from src.pipeline.config import PipelineConfig
 from src.pipeline.documents import find_documents, write_result
 from src.pipeline.null_pipeline import NullPipeline
 from src.pipeline.staged_pipeline import StagedPipeline
+from src.text_extraction.models import ConversionSettings
 from src.workspace import Workspace
 
 ROOT = Path(__file__).resolve().parents[1]
 
 # --- Settings ---------------------------------------------------------------
 MODE: Literal["run", "eval"] = "run"
-RUN_EXPERIMENT = "keywords-2pages"  # pipeline used in MODE = "run"
-EVAL_EXPERIMENTS = ["keywords-2pages"]  # evaluated in this order in MODE = "eval"
+RUN_EXPERIMENT = "tables-accurate"  # pipeline used in MODE = "run"
+EVAL_EXPERIMENTS = ["tables-accurate"]  # evaluated in this order in MODE = "eval"
 EVAL_CASES: list[str] | None = None  # e.g. ["przyklad_01", "negatywne"] for a quick run; None = all
 EVAL_SETS = [  # references sit next to the PDFs; a PDF without one must produce {}
     EvalSet("synthetic", ROOT / "dane", "przyklad_*/*.pdf"),  # text-layer cases, some with negatives inside
@@ -65,6 +66,18 @@ EXPERIMENTS = [
     Experiment(StagedPipeline, PipelineConfig(
         name="keywords-2pages",
         description="keywords-v1, but keywords are searched on the first two pages (long appeal headers).",
+        classification=KeywordClassifierSettings(pages=2),
+    )),
+    Experiment(StagedPipeline, PipelineConfig(
+        name="tables-accurate",
+        description="C1: first 2 pages, TableFormer ACCURATE: bank tables as intact 'label | value' rows.",
+        conversion=ConversionSettings(table_mode="accurate"),
+        classification=KeywordClassifierSettings(pages=2),
+    )),
+    Experiment(StagedPipeline, PipelineConfig(
+        name="tables-none",
+        description="C1: first 2 pages, no table structure: cells become text blocks; no TableFormer cost.",
+        conversion=ConversionSettings(table_mode="none"),
         classification=KeywordClassifierSettings(pages=2),
     )),
 ]

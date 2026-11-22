@@ -15,11 +15,14 @@ class ConversionSettings(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    # The brief says key data sits on the first three pages; one extra page of margin.
-    max_pages: int = 4
+    # Every reference value sits on pages 1-2 (pages 3-4 held none, in synthetic cases and scans
+    # alike), and each scanned page costs ~3 s of OCR.
+    max_pages: int = 2
     document_timeout_s: float = 120.0
     ocr_lang: tuple[str, ...] = ("pl",)
-    table_mode: Literal["fast", "accurate"] = "fast"
+    # ACCURATE keeps bank tables as intact "label | value" rows; FAST splits some cells (6 values
+    # lost), "none" (cells as separate text blocks) keeps the same values and saves ~0.1 s/PDF.
+    table_mode: Literal["fast", "accurate", "none"] = "accurate"
     num_threads: int = 4
 
 
