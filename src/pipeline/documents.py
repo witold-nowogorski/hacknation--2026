@@ -1,10 +1,11 @@
 """Documents flowing through a pipeline: input PDFs and their JSON results."""
 
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Self
 
+from src.extraction.provenance import ValueSource
 from src.text_extraction.models import ExtractedDocument
 
 
@@ -29,6 +30,8 @@ class DocumentResult:
     doc_type: str | None
     data: dict[str, Any]
     extracted: ExtractedDocument | None = None  # the text the result came from; None if there was none
+    scores: dict[str, float] = field(default_factory=dict)  # classification score of every type
+    sources: tuple[ValueSource, ...] = ()  # where each output value came from
     elapsed_s: float = 0.0
     error: str | None = None  # set when processing failed and `{}` was written instead
 
@@ -50,7 +53,25 @@ def find_documents(root: Path, pattern: str = "*/*.pdf") -> list[InputDocument]:
 
 def write_result(result: DocumentResult, output_dir: Path) -> Path:
     """Write `<output_dir>/<case>/<pdf stem>.json` and return its path."""
-    target = output_dir / result.document.case / f"{result.document.path.stem}.json"
+    return _write_json(result.data, output_dir / result.document.case / f"{result.document.path.stem}.json")
+
+
+def write_trace(result: DocumentResult, traces_dir: Path) -> Path:
+    """Write `<traces_dir>/<case>/<pdf stem>.json`: how the document was read, classified and extracted."""
+    extracted = result.extracted
+    trace = {
+        "document": result.document.label,
+        "conversion": {"status": extracted.status, "pages": extracted.page_count,
+                       "seconds": extracted.conversion_s} if extracted else None,
+        "doc_type": result.doc_type,
+        "classification_scores": result.scores,
+        "error": result.error,
+        "values": [asdict(source) for source in result.sources],
+    }
+    return _write_json(trace, traces_dir / result.document.case / f"{result.document.path.stem}.json")
+
+
+def _write_json(content: Any, target: Path) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(result.data, ensure_ascii=False, indent=2), encoding="utf-8")
+    target.write_text(json.dumps(content, ensure_ascii=False, indent=2), encoding="utf-8")
     return target

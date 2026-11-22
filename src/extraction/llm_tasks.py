@@ -12,6 +12,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, create_model
 
 from src.doc_types import DocTypeConfig, LlmTaskRule, leaf_paths
+from src.extraction.provenance import Found
 from src.inference.llm_client import LlmClient, LlmError
 from src.value_types import VALUE_TYPES, ValueType, fold
 
@@ -53,7 +54,7 @@ class LlmTasks:
         self._tasks = [_Task(rule, value_types) for rule in doc_type.llm_tasks]
         self._client = client
 
-    def apply(self, text: str, spans: dict[str, Span | None], values: dict[str, list[Any]]) -> None:
+    def apply(self, text: str, spans: dict[str, Span | None], values: dict[str, list[Found]]) -> None:
         """Update `values` in place with the tasks' accepted answers."""
         for task in self._tasks:
             try:
@@ -64,20 +65,21 @@ class LlmTasks:
             except LlmError as error:
                 logger.warning("LLM task %s failed, rule values kept: %s", task.rule.name, error)
 
-    def _extract(self, task: _Task, text: str, spans: dict[str, Span | None], values: dict[str, list[Any]]) -> None:
+    def _extract(self, task: _Task, text: str, spans: dict[str, Span | None], values: dict[str, list[Found]]) -> None:
         asked = [path for path in task.rule.fields if task.rule.mode == "decide" or not values.get(path)]
-        context = _context(task.rule, text, spans)
-        if not asked or not context or not task.triggered(context):
+        context_span = _context_span(task.rule, text, spans)
+        context = text[context_span[0]:context_span[1]] if context_span else ""
+        if not asked or not context.strip() or not task.triggered(context):
             return
-        answer = self._client.complete_json(f"{task.rule.prompt}\n\nFragment dokumentu:\n{context}", task.schema)
+        answer = self._client.complete_json(f"{task.rule.prompt}\n\nFragment dokumentu:\n{context.strip()}", task.schema)
         for path in asked:
             value_type = task.types[path]
             value = value_type.normalize(getattr(answer, task.keys[path]))
             if value is not None and (not value_type.written or _occurs(value, value_type, context)):
-                values[path] = [value]
+                values[path] = [Found(value, "llm", f"task {task.rule.name}", context_span)]
 
-    def _nominative(self, task: _Task, values: dict[str, list[Any]]) -> None:
-        names = [(path, index, name) for path in task.rule.fields for index, name in enumerate(values.get(path, []))]
+    def _nominative(self, task: _Task, values: dict[str, list[Found]]) -> None:
+        names = [(path, index, found.value) for path in task.rule.fields for index, found in enumerate(values.get(path, []))]
         if not names or not task.triggered("\n".join(name for _, _, name in names)):
             return
         answer = self._client.complete_json(
@@ -88,7 +90,8 @@ class LlmTasks:
         for (path, index, original), rewritten in zip(names, answer.names):
             value = VALUE_TYPES["person_name"].normalize(rewritten)
             if value is not None and _same_stems(original, value):
-                values[path][index] = value
+                values[path][index] = Found(value, "llm", f"task {task.rule.name} (from {original!r})",
+                                            values[path][index].span)
 
 
 def _answer_keys(paths: list[str]) -> dict[str, str]:
@@ -103,12 +106,12 @@ def _answer_type(value_type: ValueType) -> Any:
     return allowed | None
 
 
-def _context(rule: LlmTaskRule, text: str, spans: dict[str, Span | None]) -> str:
+def _context_span(rule: LlmTaskRule, text: str, spans: dict[str, Span | None]) -> Span | None:
     """The first listed section that exists (like field rules), else the document start; at most context_chars."""
     if not rule.sections:
-        return text[:rule.context_chars]
+        return 0, min(len(text), rule.context_chars)
     span = next((spans[name] for name in rule.sections if spans[name]), None)
-    return text[span[0]:span[1]].strip()[:rule.context_chars] if span else ""
+    return (span[0], min(span[1], span[0] + rule.context_chars)) if span else None
 
 
 def _occurs(value: Any, value_type: ValueType, context: str) -> bool:

@@ -14,5 +14,6 @@ class Workspace:
     doc_types_dir: Path  # config/doc_types/<name>/doc_type.toml
     models_dir: Path  # Docling models
     cache_dir: Path  # cached Docling conversions and LLM responses
+    traces_dir: Path  # <case>/<file>.json provenance of production runs (never in the scored output)
     runs_dir: Path  # artifacts of each evaluation run (git-ignored)
     reports_dir: Path  # evaluation reports (committed)

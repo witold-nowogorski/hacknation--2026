@@ -1,7 +1,8 @@
 """Entry point. Settings and experiments are defined here in code instead of command-line arguments.
 
 Run from the repo root:  python -m src.run
-  MODE = "run"   process WORKSPACE.input_dir into WORKSPACE.output_dir with RUN_EXPERIMENT
+  MODE = "run"   process WORKSPACE.input_dir into WORKSPACE.output_dir with RUN_EXPERIMENT;
+                 the source of every value goes to WORKSPACE.traces_dir
   MODE = "eval"  evaluate EVAL_EXPERIMENTS on EVAL_SETS; reports go to eval/reports/,
                  full artifacts of each run to traces/runs/<run id>/
 """
@@ -17,7 +18,7 @@ from src.experiments.experiment import Experiment, select_experiments
 from src.experiments.runner import ExperimentRunner
 from src.inference.llm_client import LlmSettings
 from src.pipeline.config import PipelineConfig
-from src.pipeline.documents import find_documents, write_result
+from src.pipeline.documents import find_documents, write_result, write_trace
 from src.pipeline.null_pipeline import NullPipeline
 from src.pipeline.staged_pipeline import StagedPipeline
 from src.text_extraction.models import ConversionSettings
@@ -45,6 +46,7 @@ WORKSPACE = Workspace(
     doc_types_dir=ROOT / "config" / "doc_types",
     models_dir=ROOT / "models",
     cache_dir=ROOT / ".cache",
+    traces_dir=ROOT / "traces" / "production",
     runs_dir=ROOT / "traces" / "runs",
     reports_dir=ROOT / "eval" / "reports",
 )
@@ -122,6 +124,7 @@ def process_input(experiment: Experiment, workspace: Workspace) -> None:
     pipeline = experiment.build_pipeline(workspace)
     for index, result in enumerate(pipeline.run(documents), start=1):
         write_result(result, workspace.output_dir)
+        write_trace(result, workspace.traces_dir)
         logger.info("[%d/%d] %s -> %s (%.2f s)", index, len(documents), result.document.label,
                     result.doc_type or "none", result.elapsed_s)
 

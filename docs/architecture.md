@@ -28,7 +28,7 @@ flowchart TD
     Q -- "tak" --> L["5. LLM<br/>wycinek tekstu + schemat z modelu<br/>→ walidacja tym samym modelem<br/>→ wartość musi wystąpić w tekście"]
     L --> W["6. Zapis"]
     W --> O["output/#lt;sprawa#gt;/#lt;nazwa#gt;.json"]
-    W --> T["traces/#lt;sprawa#gt;/#lt;nazwa#gt;.json<br/>pochodzenie każdej wartości"]
+    W --> T["traces/production/#lt;sprawa#gt;/#lt;nazwa#gt;.json<br/>pochodzenie każdej wartości"]
     E --> O
 ```
 
@@ -201,7 +201,14 @@ Jakość OCR: wartości w tekście na skanach 0,85 (przelew) – 0,97 (pełnomoc
 ## 8. Cache, trace, determinizm
 
 - `.cache/` – konwersje Docling i odpowiedzi LLM, klucz = hash pliku/wycinka + ustawienia.
-- `traces/` – dla każdego dokumentu: typ i wynik klasyfikacji, każde pole z metodą (`rule`/`llm`/`derived`) i fragmentem źródłowym.
+- `traces/` – dla każdego dokumentu (`traces/production/<sprawa>/<plik>.json` w trybie run, `traces/runs/<przebieg>/traces/` w ewaluacji): status i czas konwersji, wyniki klasyfikacji wszystkich typów oraz każda wartość z pochodzeniem – źródło (`rule`/`llm`/`derived`/`default`), konkretna reguła (etykieta, wzorzec, klasa) lub zadanie LLM, strona i fragment tekstu. Przykład:
+
+  ```json
+  {"path": "OdwolanieKIO.czynnosc_powod_id", "value": 8, "source": "llm", "detail": "task contested_action",
+   "page": 2, "snippet": "Zamawiający w dniu 23 sierpnia 2026 roku przekazał informację o wyniku postępowania, z której wynika, że zaniechał wykluczenia wykonawcy …"}
+  ```
+
+  Sprawdzenie: wszystkie 2262 niepuste wartości wyjściowe (226 dokumentów, `rules-v1` i `hybrid-v1`) mają wpis w trace z tą samą wartością; stronę i fragment ma każda poza wartością domyślną.
 - `output/` – wyłącznie oceniane pliki JSON.
 - Deterministycznie: posortowane pliki, temperatura 0, cache.
 
