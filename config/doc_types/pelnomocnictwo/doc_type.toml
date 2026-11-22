@@ -14,3 +14,51 @@ min_score = 3
 "do reprezentowania" = 1
 "pełnomocnik" = 1
 "niżej podpisany" = 1
+
+# --- Field rules (see FieldRule in src/doc_types.py) ---------------------------------------------
+# The principal (mocodawca) is the first organisation named with its legal form, or the business
+# name after "pod firmą" of a sole trader. Attorneys follow "udzielam pełnomocnictwa" or a
+# "Pełnomocnicy" row; signatories sign under dotted lines or "reprezentowana przez". One
+# principal is extracted (consortia are left to the LLM stage).
+
+[fields."mocodawca[].data.nazwa"]
+pattern = '''(?i:pod firm\w*:?)\s+([^,\n(]+)|(?:(?i:mocodawca)[ \t]+)?((?:[A-ZĄĆĘŁŃÓŚŹŻ0-9][\w&'.-]*)(?:[ \t]+(?:[A-ZĄĆĘŁŃÓŚŹŻ0-9][\w&'.-]*|i|w|we|na|dla|im\.))*?[ \t]+(?:S\.[ \t]?A\.|[Ss]p\.[ \t]?z[ \t]?o\.[ \t]?o\.|[Ss]p\.[ \t]?k\.|[Ss]p\.[ \t]?j\.|[Ss]p\.[ \t]?p\.|[Ss]półka[ \t]+(?:z[ \t]+ograniczoną[ \t]+odpowiedzialnością|akcyjna|komandytowa|jawna|partnerska))(?:[ \t]+sp\.[ \t]?k\.)?)'''
+
+[fields."mocodawca[].data.krs"]
+labels = ['krs\b']
+window = 40
+
+[fields."mocodawca[].data.nip"]
+labels = ['nip\b']
+window = 40
+
+[fields."mocodawca[].data.typ"]
+default = "osoba_prawna"
+
+[fields."mocodawca[].data.typ".classify]  # whichever appears first
+osoba_fizyczna = ['prowadzac\w* dzialalnosc', 'ceidg', 'centralnej ewidencji', 'pod firma']
+osoba_prawna = ['\bs\.\s?a\.', '\bsp\.\s?z\s?o\.\s?o\.', '\bsp\.\s?[kjp]\.', '\bspolka\b', '\bkrs\b']
+
+[fields."mocodawca[].data.imie_nazwisko"]
+only_if = { "mocodawca[].data.typ" = "osoba_fizyczna" }
+labels = ['nizej podpisan\w*', '^\s*ja,', 'pod firma']
+window = 80
+
+[fields."pelnomocnicy[].imie_nazwisko"]
+labels = ['pelnomocnicy\s*\|', 'udziel\w* pelnomocnictw\w*', 'ustanawia\w*', 'upowazniam\w*', 'pelnomocnikiem\w*',
+          'pelnomocnikami', '\bpelnomocnik\s+(?=(?:adw|r\.\s*pr|radca|mec)\b)']
+multiple = "segment"
+window = 300
+cut = ['do reprezentowania', '\bdo\s*:', '\bdo\s+(?:wniesienia|zastepowania|dzialania|reprezentowania|udzialu)',
+       'zamawiaj', 'w postepowaniu', 'postepowanie\s*\|', 'zakres\s*\|', 'prowadzon', 'na rzecz', '["„]']
+
+[fields."pelnomocnicy[].pesel"]
+labels = ['pesel\b']
+multiple = "occurrences"
+window = 40
+
+[fields."mocodawca[].podpisujacy[].imie_nazwisko"]
+labels = ['\.{5,}', 'reprezentowan\w* przez\s*:?', 'podpisan\w* przez', 'w imieniu ktore\w* dziala\w*']
+multiple = "occurrences"
+window = 160
+exclude = ["pelnomocnicy[].imie_nazwisko"]

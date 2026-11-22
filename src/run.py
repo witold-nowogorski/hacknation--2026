@@ -27,8 +27,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # --- Settings ---------------------------------------------------------------
 MODE: Literal["run", "eval"] = "run"
-RUN_EXPERIMENT = "tables-accurate"  # pipeline used in MODE = "run"
-EVAL_EXPERIMENTS = ["tables-accurate"]  # evaluated in this order in MODE = "eval"
+RUN_EXPERIMENT = "rules-v1"  # pipeline used in MODE = "run"
+EVAL_EXPERIMENTS = ["rules-v1"]  # evaluated in this order in MODE = "eval"
 EVAL_CASES: list[str] | None = None  # e.g. ["przyklad_01", "negatywne"] for a quick run; None = all
 EVAL_SETS = [  # references sit next to the PDFs; a PDF without one must produce {}
     EvalSet("synthetic", ROOT / "dane", "przyklad_*/*.pdf"),  # text-layer cases, some with negatives inside
@@ -78,6 +78,11 @@ EXPERIMENTS = [
         name="tables-none",
         description="C1: first 2 pages, no table structure: cells become text blocks; no TableFormer cost.",
         conversion=ConversionSettings(table_mode="none"),
+        classification=KeywordClassifierSettings(pages=2),
+    )),
+    Experiment(StagedPipeline, PipelineConfig(
+        name="rules-v1",
+        description="C3: field rules from config/doc_types (labels, sections, value-type candidates); no LLM.",
         classification=KeywordClassifierSettings(pages=2),
     )),
 ]

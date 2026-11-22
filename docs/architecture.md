@@ -67,30 +67,41 @@ Przepływ danych jest jednokierunkowy; etapy wymieniają się typowanymi obiekta
 
 ```
 config/doc_types/<typ>/
-  doc_type.toml    # klasyfikacja (słowa kluczowe z wagami); później pola (etykiety, typ wartości, metoda)
+  doc_type.toml    # klasyfikacja (słowa kluczowe z wagami), sekcje tekstu i reguły pól
   schema.json      # kształt wyjściowego JSON-a 1:1 z oczekiwanym formatem; liście = nazwy typów wartości
   prompt.md        # instrukcja dla LLM (tylko jeśli typ ma pola LLM)
 ```
 
-Format TOML (`tomllib` ze standardowej biblioteki – bez dodatkowej zależności). Plik jest walidowany modelem Pydantic przy wczytaniu (`src/doc_types.py`); błąd configu zatrzymuje program ze ścieżką pliku. Obecny stan (klasyfikacja) i szkic pól dla przelewu:
+Format TOML (`tomllib` ze standardowej biblioteki – bez dodatkowej zależności). Plik jest walidowany modelem Pydantic przy wczytaniu (`src/doc_types.py`): ścieżki pól muszą istnieć w `schema.json`, sekcje i pola, do których reguła się odwołuje, muszą być zdefiniowane, regexy muszą się kompilować; błąd zatrzymuje program ze ścieżką pliku. Przykład (fragmenty z prawdziwych configów):
 
 ```toml
 [classification]
-min_score = 4                       # minimalna suma wag, by uznać dokument za ten typ
+min_score = 3                                   # minimalna suma wag, by uznać dokument za ten typ
+[classification.keywords]                       # fraza → waga; ujemna waga = dowód przeciw
+"przelew" = 2
 
-[classification.keywords]           # fraza → waga; ujemna waga = dowód przeciw
-"potwierdzenie" = 2
-"rachunek odbiorcy" = 3
+[sections.odwolujacy]                           # część tekstu: od etykiety do etykiety
+start = ['odwolujac\w*\s*:']
+end = ['zamawiaj\w*\s*:', 'dotyczy']
 
-# faza C – pola:
-[fields.kwota]
-labels = ["Kwota operacji", "Kwota"]
-type = "amount"
+[fields."przelew_bankowy.z_rachunku"]           # wartość typu (tu: rachunek) po jednej z etykiet
+labels = ["z rachunku", "rachunek nadawcy", "zleceniodawca"]
+nth = 0                                         # bez etykiety: pierwszy rachunek w tekście
+
+[fields."Odwolujacy[].nazwa"]                   # tekst od początku sekcji do pierwszego cięcia
+sections = ["odwolujacy"]
+cut = ['\s+ul\.', '\s*\d{2}-\d{3}', '\s+(?:krs|nip|regon)\b']
+
+[fields."mocodawca[].data.typ".classify]        # wartość, której wzorzec pada najwcześniej
+osoba_fizyczna = ['prowadzac\w* dzialalnosc', 'ceidg']
+osoba_prawna = ['\bsp\.\s?z\s?o\.\s?o\.', '\bkrs\b']
 ```
+
+Silnik reguł (`src/extraction/rule_extractor.py`) dopasowuje etykiety, sekcje i cięcia do „złożonej” kopii tekstu (małe litery, bez polskich znaków, te same pozycje), więc reguły przeżywają straty OCR; wartości czyta z oryginału i normalizuje typem wartości. Sposoby odczytu pola (`FieldRule`): `lookup` (tabela po wartości wcześniejszego pola, np. opis powodu po kodzie), `classify` (najwcześniej pasujący wzorzec), `labels` (wartość po etykiecie, etykiety w kolejności z configu) albo początek sekcji. Wartość to pierwsza grupa `pattern`, kandydat typu wartości (data, kwota, rachunek, imię i nazwisko …) albo tekst do końca linii (z zawiniętymi liniami). Opcje: `cut`, `skip`, `window`, `multiple` (`segment` – wszystkie osoby po etykiecie, `occurrences` – po każdym wystąpieniu, np. linii kropek pod podpisem), `exclude`, `only_if`, `nth`, `default`. Etykieta konkurencyjnego pola tego samego typu kończy okno – tak rozdzielamy rachunek nadawcy i odbiorcy.
 
 Klasyfikator (`KeywordClassifier`) szuka fraz `keywords` na pierwszych `pages` stronach, a fraz `head_keywords` tylko w nagłówku dokumentu (`head_chars` znaków) – tam dokument mówi, czym jest: orzeczenie KIO zaczyna się od „Sygn. akt … WYROK”, a prawdziwe odwołania cytują orzeczenia dopiero w uzasadnieniu (wykryte na skanach – ujemne słowa w całym tekście odrzucały prawdziwe odwołania). Dopasowanie ignoruje wielkość liter, białe znaki i polskie znaki diakrytyczne (OCR gubi ogonki: „ODWOLANIE”, „Odwołujacy”); wygrywa typ z najwyższą sumą, jeśli osiąga `min_score` i nie remisuje z innym.
 
-Pola oznaczone `method: llm` (np. `czynnosc_powod_id`) trafiają do LLM zawsze; pozostałe tylko wtedy, gdy reguły nic nie znalazły.
+LLM (faza C4) dostanie pola, których reguły nie rozstrzygają (powód zaskarżenia, mianownik nazwisk, konsorcja) i pola puste po regułach.
 
 ## 5. Model danych (Pydantic)
 
@@ -127,13 +138,23 @@ Zasady:
 
 ## 6. Reguły vs LLM
 
-| Typ | Reguły | LLM |
+Wynik samych reguł (`rules-v1`, 226 dokumentów, strict): **F1 0,949** – syntetyczne 0,968, skany 0,822, negatywy bez wymyślonych wartości; odwołanie 0,957, pełnomocnictwo 0,921, przelew 0,958. Pola poniżej 0,9:
+
+| Pole | F1 | Przyczyna | Dalej |
+|---|---|---|---|
+| `Zamawiajacy[].prowadzacy_postepowanie` | 0,00 | ustawiane tylko przy kilku zamawiających (2 z 60 odwołań); reguły biorą pierwszego | LLM: wiele podmiotów |
+| `mocodawca[].podpisujacy[]` | 0,82 | konsorcja (podpisy kilku mocodawców), nazwiska w układach kolumnowych | LLM |
+| `czynnosc_powod_id`, `czynnosc_opis` | 0,85 | „odpowiedzi do SWZ” vs „publikacja SWZ”; pierwszy zarzut ważniejszy niż zdanie o czynności (przyklad_49/58); skany bez zdania „Zamawiający w dniu” | LLM na kontekście czynności (C4) |
+
+Pozostałe straty: drugi mocodawca/odwołujący w konsorcjach, kolejność kolumn w 2 układach przelewów, błędy OCR na skanach (wartości w tekście 0,85–0,97), konwencja `PL` w 2 rachunkach ze skanów, rachunek UZP w 2 skanach przelewów, którego nie ma w tekście.
+
+| Typ | Reguły | LLM (planowane) |
 |---|---|---|
 | klasyfikacja | słowa kluczowe | tylko przy niejednoznacznym wyniku |
-| `odwolanie` | data, miejscowość, strony (sekcje „Odwołujący:”/„Zamawiający:”), KRS/NIP/REGON, e-mail, BZP, TED, nr postępowania, tytuł | **`czynnosc_powod_id` + `czynnosc_dzien`** (pierwszy zarzut), lider konsorcjum, `prowadzacy_postepowanie`; fallback dla pól nieznalezionych |
-| `pelnomocnictwo` | mocodawca (nazwa, KRS, NIP), `typ`, PESEL | **pełnomocnicy w mianowniku**, podpisujący, wielu mocodawców |
+| `odwolanie` | data, miejscowość, strony (sekcje „Odwołujący:”/„Zamawiający:”), KRS/NIP/REGON, pełnomocnik, e-mail, BZP, TED, nr postępowania, tytuł, data i powód czynności (wzorce) | **powód zaskarżenia** przy niepewnych wzorcach, kilku zamawiających |
+| `pelnomocnictwo` | mocodawca (nazwa z formą prawną, KRS, NIP, typ), pełnomocnicy, podpisujący, PESEL | **mianownik nazwisk**, konsorcja |
 | `przelew` | wszystkie pola (etykieta → wartość) | tylko fallback |
-| pola pochodne | `czynnosc_opis` ze słownika po id, `przez-pelnomocnika` z obecności pełnomocnika | – |
+| pola pochodne | `czynnosc_opis` ze słownika po kodzie, `przez-pelnomocnika` z obecności pełnomocnika | – |
 
 ```mermaid
 sequenceDiagram
