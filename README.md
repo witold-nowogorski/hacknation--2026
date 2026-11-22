@@ -2,6 +2,9 @@
 
 Converts each PDF of a KIO appeal case into JSON in the UZP format: PDF → text (Docling, OCR for scans) → document type (`odwolanie`, `pelnomocnictwo`, `przelew`, else `{}`) → fields (config rules + a small LLM) → validated JSON with the source of every value.
 
+> [!TIP]
+> **Start here: [walkthrough.ipynb](walkthrough.ipynb)** – the whole solution step by step on real documents: text extraction, document type, rules, LLM, provenance of every value, and the evaluation on all 226 documents (F1 0.954). Saved with outputs, so it reads without running; to run it: `python -m notebook walkthrough.ipynb`.
+
 ```mermaid
 flowchart LR
     PDF["input/**/*.pdf"] --> T["Text<br/>Docling + RapidOCR"]
@@ -77,17 +80,6 @@ Example: `dane/przyklad_01/przelew.pdf` →
   }
 }
 ```
-
-## Quality
-
-226 organiser documents (184 digital, 30 scans, 12 negatives), strict field-level F1. Report: `eval/reports/20261122-084518_hybrid-v1.json`.
-
-| Experiment | F1 | Precision | Recall | Digital | Scans | Classification |
-|---|---|---|---|---|---|---|
-| `rules-v1` (no LLM) | 0.950 | 0.967 | 0.934 | 0.969 | 0.822 | 100% |
-| **`hybrid-v1`** (rules + Bielik-11B) | **0.954** | 0.970 | 0.938 | 0.973 | 0.822 | 100% |
-
-Details per type and field: [docs/evaluation.md](docs/evaluation.md).
 
 ## Documentation
 
