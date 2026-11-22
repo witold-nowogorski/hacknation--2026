@@ -7,6 +7,7 @@ from dataclasses import replace
 from time import perf_counter
 from typing import Self
 
+from src.inference.llm_client import LlmUsage
 from src.pipeline.config import PipelineConfig
 from src.pipeline.documents import DocumentResult, InputDocument
 from src.workspace import Workspace
@@ -29,6 +30,11 @@ class Pipeline(ABC):
     @abstractmethod
     def from_config(cls, config: PipelineConfig, workspace: Workspace) -> Self:
         """Build the pipeline and its stages from the experiment config."""
+
+    @property
+    def llm_usage(self) -> LlmUsage | None:
+        """LLM calls and tokens spent so far; None for pipelines without an LLM."""
+        return None
 
     @abstractmethod
     def process(self, document: InputDocument) -> DocumentResult:

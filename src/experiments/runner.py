@@ -11,6 +11,7 @@ from src.experiments.eval_sets import EvalSet, select_documents
 from src.experiments.experiment import Experiment
 from src.experiments.reports import EvalReport, ReportStore, RunInfo, dataset_id, format_leaderboard, git_revision
 from src.experiments.run_directory import RunDirectory
+from src.inference.llm_client import LlmUsage
 from src.pipeline.documents import DocumentResult, InputDocument
 from src.workspace import Workspace
 
@@ -50,17 +51,22 @@ class ExperimentRunner:
                 _log_progress(index, len(documents), result, evaluation, evaluator)
 
             report = self._build_report(experiment, run_directory.run_id, started_at, perf_counter() - start,
-                                        documents, doc_types, evaluator)
+                                        documents, doc_types, evaluator, pipeline.llm_usage)
             run_directory.write_report(report)
             self._reports.save(report)
             logger.info("Done in %.1f s (%.2f s/document)\n%s", report.run.duration_s,
                         report.run.seconds_per_document, format_scores(report.scores))
+            if usage := report.run.llm_usage:
+                logger.info("LLM: %d calls, %d cache hits, %d failures; cold run: %d prompt + %d completion tokens "
+                            "(%.0f per document), %.0f s", usage.calls, usage.cache_hits, usage.failures,
+                            usage.prompt_tokens, usage.completion_tokens,
+                            (usage.prompt_tokens + usage.completion_tokens) / len(documents), usage.seconds)
             logger.info("%s", format_leaderboard(self._reports.load(), report))
         return report
 
     def _build_report(self, experiment: Experiment, run_id: str, started_at: datetime, duration_s: float,
                       documents: list[InputDocument], doc_types: Mapping[str, DocTypeConfig],
-                      evaluator: Evaluator) -> EvalReport:
+                      evaluator: Evaluator, llm_usage: LlmUsage | None) -> EvalReport:
         commit, dirty = git_revision(self._workspace.root)
         return EvalReport(
             run=RunInfo(
@@ -74,6 +80,7 @@ class ExperimentRunner:
                 dataset_id=dataset_id(documents),
                 git_commit=commit,
                 git_dirty=dirty,
+                llm_usage=llm_usage,
             ),
             config=experiment.config.model_dump(mode="json"),
             doc_types={name: doc_type.model_dump(mode="json") for name, doc_type in doc_types.items()},

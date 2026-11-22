@@ -15,6 +15,7 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from src.evaluation.evaluator import NO_TYPE, EvalScores
+from src.inference.llm_client import LlmUsage
 from src.pipeline.documents import InputDocument
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class RunInfo(BaseModel):
     dataset_id: str
     git_commit: str | None
     git_dirty: bool | None
+    llm_usage: LlmUsage | None = None  # tokens and seconds include cached answers: the cost of a cold run
 
 
 class EvalReport(BaseModel):

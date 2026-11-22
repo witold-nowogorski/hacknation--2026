@@ -39,7 +39,8 @@ max_chars = 1500
 [sections.header]
 max_chars = 4000
 
-[sections.action]
+[sections.action]  # one sentence: "Zamawiający w dniu <data> <czynność>."
+end = ['\.\s+(?:zarzut|uprzednio|wczesniej|nastepnie|pozniej|w zwiazku|odwolujac|tym samym|zatem|wobec|informacj)', '\n']
 start = ['zamawiaj\w* (?:\w+ ){0,6}?w dniu', 'czynnosc\w* .{0,80}w dniu', 'przekazan\w* .{0,40}w dniu', 'poinformowan\w* pismem z']
 max_chars = 220
 
@@ -156,3 +157,40 @@ sections = ["header"]
 labels = ['\bpn\.?', 'pod nazwa', 'nazwa zamowienia', 'nazwa postepowania']
 cut = ['["”“]', ',\s*(?:nr|numer|znak|prowadzon|ogloszen)', '\s+nr referencyjny']
 window = 400
+
+[sections.first_charge]
+start = ['zarzut\w* nr 1\b', 'zarzut\w* 1\b']
+max_chars = 400
+
+# --- LLM tasks (see LlmTaskRule in src/doc_types.py); used only by pipelines with an LLM ----------
+
+[[llm_tasks]]
+name = "contested_action"
+fields = ["OdwolanieKIO.czynnosc_powod_id"]
+sections = ["action", "contested"]  # the action sentence decides; the list of contested actions if there is none
+context_chars = 1500
+mode = "decide"
+prompt = """Jesteś prawnikiem zamówień publicznych. Poniżej fragment odwołania do Krajowej Izby Odwoławczej.
+Fragment opisuje zaskarżoną czynność lub zaniechanie zamawiającego. Przypisz je do jednej kategorii i podaj jej kod czynnosc_powod_id:
+1 = Decyzja o odrzuceniu oferty (zamawiający odrzucił ofertę, zwykle odwołującego)
+2 = Ogłoszenie wyboru oferty (wybór oferty najkorzystniejszej, ocena ofert)
+3 = Decyzja o wykluczeniu wykonawcy (zamawiający wykluczył wykonawcę)
+4 = Publikacja specyfikacji warunków zamówienia (SWZ) – zarzuty wobec treści SWZ, ogłoszenia lub warunków udziału
+5 = Modyfikacja treści SWZ (zarzut dotyczy zmiany SWZ)
+6 = Odpowiedzi/wyjaśnienia do SWZ (odpowiedzi na pytania wykonawców)
+7 = Zaniechanie odrzucenia oferty (zamawiający NIE odrzucił cudzej oferty, choć powinien)
+8 = Zaniechanie wykluczenia wykonawcy (zamawiający NIE wykluczył wykonawcy, choć powinien)
+9 = Decyzja o unieważnieniu postępowania
+10 = Zaniechanie unieważnienia postępowania (zamawiający NIE unieważnił postępowania)
+11 = Opis przedmiotu zamówienia (OPZ)
+12 = Projektowane postanowienia umowy
+Jeśli fragment nie pozwala ustalić kodu, zwróć null."""
+
+[[llm_tasks]]
+name = "nominative_names"
+kind = "nominative"
+fields = ["Odwolujacy[].pelnomocnik.imie_nazwisko"]
+when = ['(?:ego|emu|owi|iem|ą|ę|iej|skiej|ckiej)\b']
+prompt = """Podane imiona i nazwiska mogą być odmienione (np. „Jana Kowalskiego”, „Annę Nowak”).
+Zapisz każde w mianowniku („Jan Kowalski”, „Anna Nowak”), w tej samej kolejności, bez tytułów i funkcji.
+Zwróć listę names o tej samej długości."""

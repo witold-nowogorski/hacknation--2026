@@ -42,7 +42,7 @@ Błąd pojedynczego pliku (uszkodzony PDF, błąd API) → log z nazwą pliku, z
 | pętla | `src/pipeline/` | `Pipeline` (ABC: `from_config`, `process`; `run` mierzy czas i obsługuje błędy), `PipelineConfig`, `InputDocument`/`DocumentResult` |
 | 1 | `src/text_extraction/` | Docling, lokalne modele, OCR, cache konwersji |
 | 2 | `src/classification/` | punktacja typów wg słów kluczowych z configu, fallback LLM |
-| 3–5 | `src/extraction/` | model wyjścia z `schema.json` (`output_model.py`), `SkeletonExtractor` (pełna struktura z null); dalej reguły i LLM |
+| 3–5 | `src/extraction/` | model wyjścia z `schema.json` (`output_model.py`), reguły z configu (`rule_extractor.py`), zadania LLM z configu (`llm_tasks.py`) |
 | ewaluacja | `src/evaluation/` | porównanie z referencją, F1, wartości obecne w tekście, czasy konwersji (`Evaluator` liczy przyrostowo) |
 | eksperymenty | `src/experiments/` | `Experiment` (klasa pipeline'u + config), `ExperimentRunner`, artefakty przebiegu, historia raportów i ranking |
 | LLM | `src/inference/` | `LlmClient`: API zgodne z OpenAI (PSNC, Bielik-11B), odpowiedzi JSON wg schematu Pydantic, cache odpowiedzi, liczniki tokenów |
@@ -101,7 +101,7 @@ Silnik reguł (`src/extraction/rule_extractor.py`) dopasowuje etykiety, sekcje i
 
 Klasyfikator (`KeywordClassifier`) szuka fraz `keywords` na pierwszych `pages` stronach, a fraz `head_keywords` tylko w nagłówku dokumentu (`head_chars` znaków) – tam dokument mówi, czym jest: orzeczenie KIO zaczyna się od „Sygn. akt … WYROK”, a prawdziwe odwołania cytują orzeczenia dopiero w uzasadnieniu (wykryte na skanach – ujemne słowa w całym tekście odrzucały prawdziwe odwołania). Dopasowanie ignoruje wielkość liter, białe znaki i polskie znaki diakrytyczne (OCR gubi ogonki: „ODWOLANIE”, „Odwołujacy”); wygrywa typ z najwyższą sumą, jeśli osiąga `min_score` i nie remisuje z innym.
 
-LLM (faza C4) dostanie pola, których reguły nie rozstrzygają (powód zaskarżenia, mianownik nazwisk, konsorcja) i pola puste po regułach.
+Zadania LLM (`[[llm_tasks]]`, model `LlmTaskRule`) to wąskie pytania po regułach, w configu typu: `extract` – odpowiedź o kontekst (pierwsza istniejąca sekcja z listy) dla wskazanych pól, w trybie `decide` (poprawna odpowiedź zastępuje regułę) albo `fill` (tylko puste pola); `nominative` – nazwiska w mianowniku. Schemat odpowiedzi powstaje z typów wartości (kody ograniczone do `choices`), `when` uruchamia zadanie tylko, gdy wzorzec pasuje (np. końcówki przypadków zależnych w nazwiskach). Pola `lookup` (np. opis powodu) są liczone ponownie po LLM.
 
 ## 5. Model danych (Pydantic)
 
@@ -138,17 +138,24 @@ Zasady:
 
 ## 6. Reguły vs LLM
 
-Wynik samych reguł (`rules-v1`, 226 dokumentów, strict): **F1 0,949** – syntetyczne 0,968, skany 0,822, negatywy bez wymyślonych wartości; odwołanie 0,957, pełnomocnictwo 0,921, przelew 0,958. Pola poniżej 0,9:
+Wyniki (226 dokumentów, strict):
+
+| Eksperyment | F1 | syntetyczne | skany | odwołanie | pełnomocnictwo | przelew | LLM (zimny przebieg) |
+|---|---|---|---|---|---|---|---|
+| `rules-v1` (same reguły) | 0,950 | 0,969 | 0,822 | 0,959 | 0,921 | 0,958 | – |
+| `hybrid-v1` (reguły + Bielik-11B) | **0,954** | **0,973** | 0,822 | **0,965** | 0,921 | 0,958 | 70 wywołań, 182 tokeny i ~0,1 s na dokument |
+
+Negatywy: bez wymyślonych wartości w obu. LLM w `hybrid-v1`: kod powodu na zdaniu „Zamawiający w dniu … <czynność>.” (sekcja kończy się na zdaniu – kolejne zdania „Wcześniej, w dniu …” i treść zarzutów myliły model: F1 kodu 0,47 → 0,56 → 0,92); syntetyczne kody wszystkie poprawne, 6 błędów na skanach jak w regułach (skany nie mają zdania o czynności; lista zaskarżonych czynności jako kontekst dała 0,37). Mianownik nazwisk: na danych syntetycznych nie uruchamia się (nazwiska są w mianowniku). Pola poniżej 0,9:
 
 | Pole | F1 | Przyczyna | Dalej |
 |---|---|---|---|
 | `Zamawiajacy[].prowadzacy_postepowanie` | 0,00 | ustawiane tylko przy kilku zamawiających (2 z 60 odwołań); reguły biorą pierwszego | LLM: wiele podmiotów |
 | `mocodawca[].podpisujacy[]` | 0,82 | konsorcja (podpisy kilku mocodawców), nazwiska w układach kolumnowych | LLM |
-| `czynnosc_powod_id`, `czynnosc_opis` | 0,85 | „odpowiedzi do SWZ” vs „publikacja SWZ”; pierwszy zarzut ważniejszy niż zdanie o czynności (przyklad_49/58); skany bez zdania „Zamawiający w dniu” | LLM na kontekście czynności (C4) |
+| `czynnosc_powod_id`, `czynnosc_opis` | 0,86 → 0,92 z LLM | reguły: „odpowiedzi do SWZ” vs „publikacja SWZ”, zaniechanie unieważnienia (przyklad_49/58); oba: skany bez zdania „Zamawiający w dniu” | LLM na zdaniu o czynności (`hybrid-v1`) |
 
 Pozostałe straty: drugi mocodawca/odwołujący w konsorcjach, kolejność kolumn w 2 układach przelewów, błędy OCR na skanach (wartości w tekście 0,85–0,97), konwencja `PL` w 2 rachunkach ze skanów, rachunek UZP w 2 skanach przelewów, którego nie ma w tekście.
 
-| Typ | Reguły | LLM (planowane) |
+| Typ | Reguły | LLM |
 |---|---|---|
 | klasyfikacja | słowa kluczowe | tylko przy niejednoznacznym wyniku |
 | `odwolanie` | data, miejscowość, strony (sekcje „Odwołujący:”/„Zamawiający:”), KRS/NIP/REGON, pełnomocnik, e-mail, BZP, TED, nr postępowania, tytuł, data i powód czynności (wzorce) | **powód zaskarżenia** przy niepewnych wzorcach, kilku zamawiających |
@@ -174,7 +181,7 @@ sequenceDiagram
     X->>X: wartość obecna w tekście? jeśli nie → null
 ```
 
-Maksymalnie jedno wywołanie LLM na dokument. Klient: `LlmClient` (SDK `openai` z `base_url` dostawcy, bez LangChain); endpoint i model w `LlmSettings` (`src/run.py`), klucz w `.env`. Wpis w `.cache/llm/` przechowuje zapytanie obok odpowiedzi – każdą wartość z LLM można odtworzyć do promptu. Model zwraca wartości surowe (np. „20 marca 2026 roku”), więc zawsze przechodzą przez nasze normalizatory.
+Klient: `LlmClient` (SDK `openai` z `base_url` dostawcy, bez LangChain); endpoint i model w `LlmSettings` (`src/run.py`), klucz w `.env`. Odpowiedzi w JSON wg schematu, z instrukcją „zwarty JSON w jednej linii” (bez niej małe modele produkowały puste znaki do limitu), `max_tokens` 200, jedna ponowna próba przy złej odpowiedzi; w cache trafiają tylko odpowiedzi poprawne (i są ponownie walidowane przy odczycie). Wpis w `.cache/llm/` przechowuje zapytanie, odpowiedź, tokeny i czas – każdą wartość z LLM można odtworzyć do promptu, a raport pokazuje koszt zimnego przebiegu. Niezawodność: wartość pisana musi wystąpić w kontekście, nazwisko po zmianie musi zachować rdzenie słów, błąd zostawia wartość z reguł; po 3 nieudanych żądaniach z rzędu (np. awaria API) klient przestaje wołać model do końca przebiegu – zostają same reguły.
 
 ## 7. Konwersja i budżet czasu
 

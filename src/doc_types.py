@@ -1,6 +1,6 @@
 """Document type definitions in `config/doc_types/<name>/`, validated on load.
 
-  doc_type.toml   classification rules, text sections and field extraction rules
+  doc_type.toml   classification rules, text sections, field extraction rules and LLM tasks
   schema.json     the output JSON shape, with value-type names as leaves; one-element lists mean
                   "list of", e.g. {"przelew_bankowy": {"kwota": "amount", ...}}
 
@@ -94,6 +94,36 @@ class FieldRule(BaseModel):
         return self
 
 
+class LlmTaskRule(BaseModel):
+    """A focused LLM question about some fields, asked after the rules.
+
+    kind "extract": the answer to `prompt` about a context (the first listed section that exists,
+      else the document start); `mode` "decide" lets a valid answer replace the rule value, "fill" only fills empty
+      fields. Values documents write out must occur in the context, or they are dropped.
+    kind "nominative": the fields' person names rewritten in the nominative case; every word must
+      keep its stem, or the original stays.
+    The task runs only if a `when` regex matches: the folded context ("extract") or the names as
+    written ("nominative"); empty = always.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name: str
+    kind: Literal["extract", "nominative"] = "extract"
+    fields: list[str]
+    sections: list[str] = []
+    context_chars: int = 2000
+    prompt: str
+    mode: Literal["decide", "fill"] = "fill"
+    when: list[str] = []
+
+    @model_validator(mode="after")
+    def _check_regexes(self) -> Self:
+        for regex in self.when:
+            re.compile(regex)
+        return self
+
+
 class DocTypeConfig(BaseModel):
     """One document type; `name` is the folder name and the type reported in results."""
 
@@ -104,6 +134,7 @@ class DocTypeConfig(BaseModel):
     output_schema: dict[str, Any]
     sections: dict[str, SectionRule] = {}
     fields: dict[str, FieldRule] = {}
+    llm_tasks: list[LlmTaskRule] = []
 
     @field_validator("output_schema")
     @classmethod
@@ -126,6 +157,15 @@ class DocTypeConfig(BaseModel):
                 if reference not in earlier:
                     raise ValueError(f"fields.{path!r}: {reference!r} must be a field defined earlier")
             earlier.append(path)
+        for task in self.llm_tasks:
+            for path in task.fields:
+                if path not in leaves:
+                    raise ValueError(f"llm_tasks {task.name!r}: {path!r} is not a leaf of schema.json")
+                if task.kind == "nominative" and leaves[path] != "person_name":
+                    raise ValueError(f"llm_tasks {task.name!r}: {path!r} is not a person_name")
+            for section in task.sections:
+                if section not in self.sections:
+                    raise ValueError(f"llm_tasks {task.name!r}: unknown section {section!r}")
         return self
 
     @property

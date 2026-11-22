@@ -13,19 +13,15 @@ from typing import Any
 from src.doc_types import DocTypeConfig, FieldRule, SectionRule, leaf_paths
 from src.extraction.field_extractor import FieldExtractor
 from src.extraction.output_model import OutputObject, build_output_model, skeleton
+from src.extraction.llm_tasks import LlmTasks, Span
+from src.inference.llm_client import LlmClient
 from src.text_extraction.models import ExtractedDocument
-from src.value_types import VALUE_TYPES, ValueType, fold_diacritics
+from src.value_types import VALUE_TYPES, ValueType, fold, fold_diacritics
 
 FLAGS = re.IGNORECASE | re.MULTILINE
 LEADING_SEPARATORS = re.compile(r"[\s:|.\-–\"„“”]+")
 TRAILING_SEPARATORS = " \t,;:|–-"
 
-Span = tuple[int, int]
-
-
-def fold(text: str) -> str:
-    """Lower case without Polish diacritics, with every character at its original position."""
-    return fold_diacritics("".join(char.lower()[:1] or char for char in text))
 
 
 def _compile(regexes: list[str]) -> list[re.Pattern[str]]:
@@ -82,14 +78,25 @@ class DocumentRules:
                 field.rivals = [other for other in self._fields if other is not field and other.labels
                                 and other.value_type is field.value_type and other.rule.sections == field.rule.sections]
 
+    def spans(self, text: str) -> dict[str, Span | None]:
+        """Where each section is in the text (None: it does not start)."""
+        folded = fold(text)
+        return {name: section.span(folded) for name, section in self._sections.items()}
+
     def apply(self, text: str) -> dict[str, list[Any]]:
         """Normalised values of every field with a rule, in rule order; multi-valued fields may have several."""
         folded = fold(text)
-        spans = {name: section.span(folded) for name, section in self._sections.items()}
+        spans = self.spans(text)
         values: dict[str, list[Any]] = {}
         for field in self._fields:
             values[field.path] = self._field_values(field, text, folded, spans, values)
         return values
+
+    def derive(self, values: dict[str, list[Any]]) -> None:
+        """Recompute lookup fields, after their source fields changed (e.g. by an LLM task)."""
+        for field in self._fields:
+            if field.rule.lookup:
+                values[field.path] = self._field_values(field, "", "", {}, values)
 
     def _field_values(self, field: _Field, text: str, folded: str, spans: dict[str, Span | None],
                       values: dict[str, list[Any]]) -> list[Any]:
@@ -198,19 +205,26 @@ def place_values(data: dict[str, Any], schema: dict[str, Any], path: str, values
 
 
 class RuleExtractor(FieldExtractor):
-    """Fills the output structure of a document type with the values its rules find in the text.
+    """Fills the output structure of a document type with the values its rules find in the text,
+    then, if an LLM is given, lets the type's LLM tasks refine them.
 
     Models and rules are built for all types up front, so an invalid config fails when the
     pipeline is built. A type without field rules yields the complete structure with null values.
     """
 
-    def __init__(self, doc_types: Mapping[str, DocTypeConfig]) -> None:
+    def __init__(self, doc_types: Mapping[str, DocTypeConfig], llm: LlmClient | None = None) -> None:
         self._models: dict[str, type[OutputObject]] = {
             name: build_output_model(doc_type) for name, doc_type in doc_types.items()}
         self._rules = {name: DocumentRules(doc_type) for name, doc_type in doc_types.items()}
+        self._tasks = {name: LlmTasks(doc_type, llm) for name, doc_type in doc_types.items()} if llm else {}
 
     def extract(self, document: ExtractedDocument, doc_type: DocTypeConfig) -> dict[str, Any]:
+        rules = self._rules[doc_type.name]
+        values = rules.apply(document.text)
+        if tasks := self._tasks.get(doc_type.name):
+            tasks.apply(document.text, rules.spans(document.text), values)
+            rules.derive(values)
         data = skeleton(doc_type.output_schema)
-        for path, values in self._rules[doc_type.name].apply(document.text).items():
-            place_values(data, doc_type.output_schema, path, values)
+        for path, field_values in values.items():
+            place_values(data, doc_type.output_schema, path, field_values)
         return self._models[doc_type.name].model_validate(data).model_dump()

@@ -42,6 +42,11 @@ def fold_diacritics(text: str) -> str:
     return text.translate(FOLD_DIACRITICS)
 
 
+def fold(text: str) -> str:
+    """Lower case without Polish diacritics, with every character at its original position."""
+    return fold_diacritics("".join(char.lower()[:1] or char for char in text))
+
+
 def normalize_text(raw: Any) -> str | None:
     """Whitespace collapsed, surrounding quotes removed."""
     if raw is None:
@@ -183,6 +188,7 @@ class ValueType:
     normalize: Callable[[Any], Any]
     written: bool = True  # False: interpreted (codes, flags, dictionary texts), never verbatim in documents
     pattern: str | None = None  # finds candidate values in text; None = free text, read up to the line end
+    choices: tuple[Any, ...] = ()  # the only allowed values (constrains LLM answers); empty = any
 
 
 VALUE_TYPES: dict[str, ValueType] = {
@@ -198,8 +204,8 @@ VALUE_TYPES: dict[str, ValueType] = {
     "date": ValueType(str, normalize_date, pattern=r"(?<!\d)(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\s*[./-]\s*\d{1,2}\s*[./-]\s*\d{4}|\d{1,2}\s*[" + LOWER + r"]+\s+\d{4})"),
     "ted": ValueType(str, normalize_ted, pattern=rf"{TED_S_FORM.pattern}|{TED_NUMBER.pattern}"),
     "bzp": ValueType(str, normalize_bzp, pattern=r"\d{4}\s*/\s*BZP\s*\d{8}(?:\s*/\s*\d{2})?"),
-    "flag": ValueType(int, normalize_flag, written=False),
-    "reason_id": ValueType(int, normalize_reason_id, written=False),
+    "flag": ValueType(int, normalize_flag, written=False, choices=(0, 1)),
+    "reason_id": ValueType(int, normalize_reason_id, written=False, choices=tuple(range(1, 13))),
     "reason_description": ValueType(str, normalize_text, written=False),
-    "party_type": ValueType(str, normalize_party_type, written=False),
+    "party_type": ValueType(str, normalize_party_type, written=False, choices=("osoba_prawna", "osoba_fizyczna")),
 }

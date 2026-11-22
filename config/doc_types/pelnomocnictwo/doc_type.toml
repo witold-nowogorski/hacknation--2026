@@ -62,3 +62,14 @@ labels = ['\.{5,}', 'reprezentowan\w* przez\s*:?', 'podpisan\w* przez', 'w imien
 multiple = "occurrences"
 window = 160
 exclude = ["pelnomocnicy[].imie_nazwisko"]
+
+# --- LLM tasks (see LlmTaskRule in src/doc_types.py); used only by pipelines with an LLM ----------
+
+[[llm_tasks]]
+name = "nominative_names"
+kind = "nominative"
+fields = ["pelnomocnicy[].imie_nazwisko", "mocodawca[].podpisujacy[].imie_nazwisko", "mocodawca[].data.imie_nazwisko"]
+when = ['(?:ego|emu|owi|iem|ą|ę|iej|skiej|ckiej)\b']
+prompt = """Podane imiona i nazwiska mogą być odmienione (np. „Jana Kowalskiego”, „Annę Nowak”).
+Zapisz każde w mianowniku („Jan Kowalski”, „Anna Nowak”), w tej samej kolejności, bez tytułów i funkcji.
+Zwróć listę names o tej samej długości."""
