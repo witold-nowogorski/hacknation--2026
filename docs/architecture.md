@@ -145,6 +145,17 @@ Wyniki (226 dokumentów, strict):
 | `rules-v1` (same reguły) | 0,950 | 0,969 | 0,822 | 0,959 | 0,921 | 0,958 | – |
 | `hybrid-v1` (reguły + Bielik-11B) | **0,954** | **0,973** | 0,822 | **0,965** | 0,921 | 0,958 | 70 wywołań, 182 tokeny i ~0,1 s na dokument |
 
+Wybór modelu (te same zadania LLM, zimny przebieg):
+
+| Model | Rozmiar | F1 | kod powodu | tokeny / dok. | czas LLM | błędne odpowiedzi |
+|---|---|---|---|---|---|---|
+| **Bielik-11B-v3.0** | 11B (gęsty) | **0,954** | **0,921** | 182 | 22 s | 0 |
+| Mistral-Small-3.2 | 24B (gęsty) | 0,952 | 0,892 | 139 | 25 s | 0 |
+| gemma-4-26B-A4B | 26B (MoE, 4B aktywne) | 0,949 | 0,835 | 133 | 10 s | 0 |
+| Qwen3.8-27B | 27B (gęsty, „myślący”) | 0,952 | 0,892 | 255 | 256 s | 17 (rozumowanie zjada limit 200 tokenów) |
+
+Bielik-11B – najmniejszy model gęsty i zarazem najlepszy – zostaje domyślny (`hybrid-v1`). Gemma wypada poniżej samych reguł, więc nie przechodzi bramki. Jeśli punktacja rozmiaru modelu okaże się surowa, `rules-v1` (0,950) jest gotowym wariantem bez LLM.
+
 Negatywy: bez wymyślonych wartości w obu. LLM w `hybrid-v1`: kod powodu na zdaniu „Zamawiający w dniu … <czynność>.” (sekcja kończy się na zdaniu – kolejne zdania „Wcześniej, w dniu …” i treść zarzutów myliły model: F1 kodu 0,47 → 0,56 → 0,92); syntetyczne kody wszystkie poprawne, 6 błędów na skanach jak w regułach (skany nie mają zdania o czynności; lista zaskarżonych czynności jako kontekst dała 0,37). Mianownik nazwisk: na danych syntetycznych nie uruchamia się (nazwiska są w mianowniku). Pola poniżej 0,9:
 
 | Pole | F1 | Przyczyna | Dalej |
@@ -194,7 +205,7 @@ Ustawienia (`ConversionSettings`, wybrane pomiarem): pierwsze **2 strony**, Tabl
 | Czas na dokument | warstwa tekstowa 0,3–0,5 s; skan 1-stronicowy 2,2–2,6 s; skan odwołania 5,6 s (2,8 s/stronę); ładowanie modeli ~5 s raz na przebieg | – |
 | Pamięć | szczyt ~4,8 GB | mieści się w 16 GB |
 
-Projekcja 150 PDF-ów (50 spraw × odwołanie, pełnomocnictwo, przelew), sama konwersja: **1,0 min** bez skanów, 3,6 min przy 1/3 skanów, **8,6 min**, gdy wszystko jest skanem. Limit to 45 min, nasz cel ≤ 30 min: zostaje zapas na ~3× wolniejszy laptop i wywołania LLM, równoległość nie jest potrzebna.
+Projekcja 150 PDF-ów (50 spraw × odwołanie, pełnomocnictwo, przelew), sama konwersja: **1,0 min** bez skanów, 3,6 min przy 1/3 skanów, **8,6 min**, gdy wszystko jest skanem. LLM (`hybrid-v1`): jedno wywołanie na odwołanie, ~0,3 s – ok. 15 s na 50 spraw. Całość mieści się w ~9 minutach także przy samych skanach. Limit to 45 min, nasz cel ≤ 30 min: zostaje zapas na ~3× wolniejszy laptop, równoległość nie jest potrzebna. Gdy API LLM nie działa, klient po 3 nieudanych żądaniach przestaje je wysyłać – przebieg kończy się regułami, bez czekania na timeouty.
 
 Jakość OCR: wartości w tekście na skanach 0,85 (przelew) – 0,97 (pełnomocnictwo) wobec 0,996–1,000 w PDF-ach z warstwą tekstową. Braki to błędy znaków (zgubione ogonki: „opłata” → „oplata”, pomylone litery: „pełnomocnictwa” → „peinomocnectwa”), nie układ strony. Kandydat na osobny eksperyment: większy model rozpoznawania PP-OCRv6 (obecnie `small`) – budżet czasu na to pozwala.
 
@@ -236,11 +247,7 @@ flowchart LR
 
 ## 10. Dodanie nowego typu dokumentu
 
-1. Utwórz `config/doc_types/<typ>/doc_type.toml` (słowa kluczowe klasyfikacji; później reguły pól) i `schema.json` (struktura wyjścia, w liściach nazwy typów wartości z `src/value_types.py`).
-2. Opcjonalnie `prompt.md` i słowniki, jeśli typ ma pola oceniane przez LLM.
-3. Dodaj przykłady z referencjami do `dane/` i uruchom ewaluację.
-
-Kod się nie zmienia, chyba że potrzebny jest nowy rodzaj wartości (np. nowy format identyfikatora) – wtedy jeden normalizator w `VALUE_TYPES`.
+Tylko konfiguracja: `config/doc_types/<typ>/schema.json` (kształt wyjścia z typami wartości) i `doc_type.toml` (słowa kluczowe, sekcje, reguły pól, opcjonalnie zadania LLM). Instrukcja krok po kroku z przykładem sprawdzonym na danych: [nowy_typ_dokumentu.md](nowy_typ_dokumentu.md). Kod się nie zmienia, chyba że potrzebny jest nowy rodzaj wartości – wtedy jeden normalizator w `VALUE_TYPES`.
 
 ## 11. Otwarte kwestie
 

@@ -53,7 +53,10 @@ WORKSPACE = Workspace(
 
 # --- LLM endpoints ----------------------------------------------------------
 PSNC_URL = "https://llm.hpc.psnc.pl/v1"  # PSNC Poznań: EU-hosted, OpenAI-compatible, open-weight models
-BIELIK_11B = LlmSettings(base_url=PSNC_URL, model="Bielik-11B-v3.0-Instruct")
+BIELIK_11B = LlmSettings(base_url=PSNC_URL, model="Bielik-11B-v3.0-Instruct")  # 11B dense, Polish
+GEMMA_26B_A4B = LlmSettings(base_url=PSNC_URL, model="gemma-4-26B-A4B-it")  # 26B mixture of experts, 4B active
+MISTRAL_24B = LlmSettings(base_url=PSNC_URL, model="Mistral-Small-3.2:24b")  # 24B dense
+QWEN_27B = LlmSettings(base_url=PSNC_URL, model="Qwen3.8-27B")  # 27B dense
 
 # --- Experiments ------------------------------------------------------------
 EXPERIMENTS = [
@@ -92,6 +95,12 @@ EXPERIMENTS = [
         classification=KeywordClassifierSettings(pages=2),
         llm=BIELIK_11B,
     )),
+    *(Experiment(StagedPipeline, PipelineConfig(
+        name=f"hybrid-{name}",
+        description=f"C6: hybrid-v1 with {settings.model} instead of Bielik-11B (model comparison).",
+        classification=KeywordClassifierSettings(pages=2),
+        llm=settings,
+    )) for name, settings in (("gemma", GEMMA_26B_A4B), ("mistral", MISTRAL_24B), ("qwen", QWEN_27B))),
 ]
 # ----------------------------------------------------------------------------
 
