@@ -1,64 +1,64 @@
-# Architektura Odwołania2json
+# Odwołania2json architecture
 
-Docelowa architektura rozwiązania. Wiedza o typach dokumentów jest w `config/`, kod jest ogólny.
+How the solution is built. Knowledge about document types lives in `config/`; the code is generic.
 
-## 1. Cel i ograniczenia
+## 1. Goal and constraints
 
-- Wejście: PDF-y w `input/` w dowolnym układzie folderów (inne pliki są pomijane) → wyjście: `output/<ta sama ścieżka>/<ta sama nazwa>.json`.
-- Typy: `odwolanie`, `pelnomocnictwo`, `przelew`; każdy inny dokument → `{}`.
-- Ocena: F1 na ukrytym zbiorze **realnych** spraw (dane treningowe są syntetyczne), mniejszy LLM = więcej punktów, nowe typy tylko przez konfigurację, przejrzystość ekstrakcji.
-- Python 3.13, CPU, 16 GB RAM, LLM przez API w EU/EOG.
+- Input: PDFs in `input/`, in any folder layout (other files are skipped) → output: `output/<same path>/<same name>.json`.
+- Types: `odwolanie`, `pelnomocnictwo`, `przelew`; any other document → `{}`.
+- Scoring: F1 on a hidden set of **real** cases (training data is synthetic), smaller LLM = more points, new types via configuration only, transparent extraction.
+- Python 3.13, CPU only, 16 GB RAM, LLM via an API hosted in the EU/EEA.
 
-Zasada: **reguły najpierw, LLM tylko tam, gdzie potrzebna ocena lub reguły zawiodły.**
+Rule: **rules first, LLM only where judgement is needed or the rules failed.**
 
-## Uruchomienie
+## Running
 
 ```bash
-python -m src.run                                   # wsadowo: input -> output (MODE, eksperymenty w src/run.py)
+python -m src.run                                   # batch: input -> output (MODE and experiments in src/run.py)
 python -m uvicorn src.api:app --port 8000           # API; Swagger: http://localhost:8000/docs
-python -m streamlit run src/web_app.py              # UI (http://localhost:8501), wymaga działającego API
+python -m streamlit run src/web_app.py              # UI (http://localhost:8501), needs the API running
 ```
 
-API i UI używają tych samych eksperymentów co `src/run.py` (domyślnie `RUN_EXPERIMENT`); przesłane pliki są przetwarzane w katalogu tymczasowym, nic nie trafia do folderu wyjściowego. API przetwarza dokumenty po jednym (blokada – konwerter i klient LLM nie są wielowątkowe); modele ładują się raz, przy pierwszym żądaniu. UI działa lokalnie (`.streamlit/config.toml`: tylko localhost, bez wysyłania statystyk).
+The API and UI use the same experiments as `src/run.py` (default `RUN_EXPERIMENT`). Uploaded files are processed in a temporary folder; nothing goes to the output folder. The API handles one document at a time (a lock – the converter and LLM client are not thread-safe). Models load once, on the first request. The UI runs locally only (`.streamlit/config.toml`: localhost only, no usage statistics sent).
 
-## 2. Przepływ dokumentu
+## 2. Document flow
 
 ```mermaid
 flowchart TD
-    A["input/**/*.pdf"] --> B["1. Tekst<br/>Docling: 2 pierwsze strony, tabele ACCURATE<br/>OCR, gdy brak warstwy tekstowej"]
-    B --> C{"2. Klasyfikacja<br/>słowa kluczowe z config"}
-    C -- "brak typu" --> E["{}"]
-    C -- "niejednoznaczne" --> CL["LLM: wybór typu"] --> C2{typ?}
-    C2 -- "brak" --> E
-    C2 -- "typ" --> D
-    C -- "typ" --> D["3. Reguły<br/>etykiety + regexy z config<br/>→ surowe wartości + źródło"]
-    D --> M["4. Model Pydantic typu<br/>normalizacja + walidacja"]
-    M --> Q{"pola LLM lub<br/>braki?"}
-    Q -- "nie" --> W
-    Q -- "tak" --> L["5. LLM<br/>wycinek tekstu + schemat z modelu<br/>→ walidacja tym samym modelem<br/>→ wartość musi wystąpić w tekście"]
-    L --> W["6. Zapis"]
-    W --> O["output/#lt;sprawa#gt;/#lt;nazwa#gt;.json"]
-    W --> T["traces/production/#lt;sprawa#gt;/#lt;nazwa#gt;.json<br/>pochodzenie każdej wartości"]
+    A["input/**/*.pdf"] --> B["1. Text<br/>Docling: first 2 pages, ACCURATE tables<br/>OCR when there is no text layer"]
+    B --> C{"2. Classification<br/>keywords from config"}
+    C -- "no type" --> E["{}"]
+    C -- "unclear" --> CL["LLM: pick the type"] --> C2{type?}
+    C2 -- "none" --> E
+    C2 -- "type" --> D
+    C -- "type" --> D["3. Rules<br/>labels + regexes from config<br/>→ raw values + source"]
+    D --> M["4. Pydantic model of the type<br/>normalisation + validation"]
+    M --> Q{"LLM fields or<br/>missing values?"}
+    Q -- "no" --> W
+    Q -- "yes" --> L["5. LLM<br/>text snippet + schema from the model<br/>→ validated with the same model<br/>→ value must appear in the text"]
+    L --> W["6. Write"]
+    W --> O["output/#lt;case#gt;/#lt;name#gt;.json"]
+    W --> T["traces/production/#lt;case#gt;/#lt;name#gt;.json<br/>source of every value"]
     E --> O
 ```
 
-Błąd pojedynczego pliku (uszkodzony PDF, błąd API) → log z nazwą pliku, zapis `{}`, kolejny plik.
+If one file fails (broken PDF, API error): log it with the file name, write `{}`, move on to the next file.
 
-## 3. Moduły
+## 3. Modules
 
-| Krok | Moduł | Odpowiedzialność |
+| Step | Module | What it does |
 |---|---|---|
-| start | `src/run.py` | ustawienia (`MODE`, `Workspace` ze ścieżkami), lista eksperymentów, logowanie |
-| API | `src/api.py` | FastAPI: `POST /documents` (PDF-y → JSON + pochodzenie wartości), `GET /experiments`, `GET /health`; Swagger pod `/docs` |
-| UI | `src/web_app.py` | Streamlit, klient API: upload PDF-ów, podgląd JSON i pochodzenia, pobieranie JSON/ZIP |
-| pętla | `src/pipeline/` | `Pipeline` (ABC: `from_config`, `process`; `run` mierzy czas i obsługuje błędy), `PipelineConfig`, `InputDocument`/`DocumentResult` |
-| 1 | `src/text_extraction/` | Docling, lokalne modele, OCR, cache konwersji |
-| 2 | `src/classification/` | punktacja typów wg słów kluczowych z configu, fallback LLM |
-| 3–5 | `src/extraction/` | model wyjścia z `schema.json` (`output_model.py`), reguły z configu (`rule_extractor.py`), zadania LLM z configu (`llm_tasks.py`) |
-| ewaluacja | `src/evaluation/` | porównanie z referencją, F1, wartości obecne w tekście, czasy konwersji (`Evaluator` liczy przyrostowo) |
-| eksperymenty | `src/experiments/` | `Experiment` (klasa pipeline'u + config), `ExperimentRunner`, artefakty przebiegu, historia raportów i ranking |
-| LLM | `src/inference/` | `LlmClient`: API zgodne z OpenAI (PSNC, Bielik-11B), odpowiedzi JSON wg schematu Pydantic, cache odpowiedzi, liczniki tokenów |
-| wspólne | `src/cache.py`, `src/doc_types.py`, `src/value_types.py`, `src/workspace.py` | cache dyskowy, wczytywanie `config/doc_types/*`, typy wartości z normalizatorami, ścieżki |
+| start | `src/run.py` | settings (`MODE`, `Workspace` with paths), list of experiments, logging |
+| API | `src/api.py` | FastAPI: `POST /documents` (PDFs → JSON + value sources), `GET /experiments`, `GET /health`; Swagger at `/docs` |
+| UI | `src/web_app.py` | Streamlit client for the API: upload PDFs, view JSON and value sources, download JSON/ZIP |
+| loop | `src/pipeline/` | `Pipeline` (ABC: `from_config`, `process`; `run` measures time and handles errors), `PipelineConfig`, `InputDocument`/`DocumentResult` |
+| 1 | `src/text_extraction/` | Docling, local models, OCR, conversion cache |
+| 2 | `src/classification/` | scores types by keywords from config, LLM fallback |
+| 3–5 | `src/extraction/` | output model from `schema.json` (`output_model.py`), rules from config (`rule_extractor.py`), LLM tasks from config (`llm_tasks.py`) |
+| evaluation | `src/evaluation/` | compares with the reference, F1, values present in the text, conversion times (`Evaluator` works incrementally) |
+| experiments | `src/experiments/` | `Experiment` (pipeline class + config), `ExperimentRunner`, run artifacts, report history and ranking |
+| LLM | `src/inference/` | `LlmClient`: OpenAI-compatible API (PSNC, Bielik-11B), JSON answers following a Pydantic schema, answer cache, token counters |
+| shared | `src/cache.py`, `src/doc_types.py`, `src/value_types.py`, `src/workspace.py` | disk cache, loading `config/doc_types/*`, value types with normalisers, paths |
 
 ```mermaid
 flowchart LR
@@ -73,199 +73,222 @@ flowchart LR
     cfg --> ex
 ```
 
-Przepływ danych jest jednokierunkowy; etapy wymieniają się typowanymi obiektami, nie importują siebie nawzajem.
+Data flows one way. Stages pass typed objects to each other and do not import each other.
 
-## 4. Konfiguracja typu dokumentu
+## 4. Document type configuration
 
 ```
-config/doc_types/<typ>/
-  doc_type.toml    # klasyfikacja (słowa kluczowe z wagami), sekcje tekstu i reguły pól
-  schema.json      # kształt wyjściowego JSON-a 1:1 z oczekiwanym formatem; liście = nazwy typów wartości
-  prompt.md        # instrukcja dla LLM (tylko jeśli typ ma pola LLM)
+config/doc_types/<type>/
+  doc_type.toml    # classification (weighted keywords), text sections and field rules
+  schema.json      # output JSON shape, exactly as the expected format; leaves = value type names
+  prompt.md        # LLM instructions (only if the type has LLM fields)
 ```
 
-Format TOML (`tomllib` ze standardowej biblioteki – bez dodatkowej zależności). Plik jest walidowany modelem Pydantic przy wczytaniu (`src/doc_types.py`): ścieżki pól muszą istnieć w `schema.json`, sekcje i pola, do których reguła się odwołuje, muszą być zdefiniowane, regexy muszą się kompilować; błąd zatrzymuje program ze ścieżką pliku. Przykład (fragmenty z prawdziwych configów):
+The format is TOML (`tomllib` from the standard library – no extra dependency). The file is checked with a Pydantic model when it loads (`src/doc_types.py`): field paths must exist in `schema.json`, sections and fields that a rule uses must be defined, and regexes must compile. An error stops the program and shows the file path. Example (parts of real configs):
 
 ```toml
 [classification]
-min_score = 3                                   # minimalna suma wag, by uznać dokument za ten typ
-[classification.keywords]                       # fraza → waga; ujemna waga = dowód przeciw
+min_score = 3                                   # minimum total weight to accept this type
+[classification.keywords]                       # phrase → weight; negative weight = evidence against
 "przelew" = 2
 
-[sections.odwolujacy]                           # część tekstu: od etykiety do etykiety
+[sections.odwolujacy]                           # part of the text: from one label to another
 start = ['odwolujac\w*\s*:']
 end = ['zamawiaj\w*\s*:', 'dotyczy']
 
-[fields."przelew_bankowy.z_rachunku"]           # wartość typu (tu: rachunek) po jednej z etykiet
+[fields."przelew_bankowy.z_rachunku"]           # a typed value (here: account) after one of the labels
 labels = ["z rachunku", "rachunek nadawcy", "zleceniodawca"]
-nth = 0                                         # bez etykiety: pierwszy rachunek w tekście
+nth = 0                                         # no label found: first account in the text
 
-[fields."Odwolujacy[].nazwa"]                   # tekst od początku sekcji do pierwszego cięcia
+[fields."Odwolujacy[].nazwa"]                   # text from the start of the section to the first cut
 sections = ["odwolujacy"]
 cut = ['\s+ul\.', '\s*\d{2}-\d{3}', '\s+(?:krs|nip|regon)\b']
 
-[fields."mocodawca[].data.typ".classify]        # wartość, której wzorzec pada najwcześniej
+[fields."mocodawca[].data.typ".classify]        # the value whose pattern matches first
 osoba_fizyczna = ['prowadzac\w* dzialalnosc', 'ceidg']
 osoba_prawna = ['\bsp\.\s?z\s?o\.\s?o\.', '\bkrs\b']
 ```
 
-Silnik reguł (`src/extraction/rule_extractor.py`) dopasowuje etykiety, sekcje i cięcia do „złożonej” kopii tekstu (małe litery, bez polskich znaków, te same pozycje), więc reguły przeżywają straty OCR; wartości czyta z oryginału i normalizuje typem wartości. Sposoby odczytu pola (`FieldRule`): `lookup` (tabela po wartości wcześniejszego pola, np. opis powodu po kodzie), `classify` (najwcześniej pasujący wzorzec), `labels` (wartość po etykiecie, etykiety w kolejności z configu) albo początek sekcji. Wartość to pierwsza grupa `pattern`, kandydat typu wartości (data, kwota, rachunek, imię i nazwisko …) albo tekst do końca linii (z zawiniętymi liniami). Opcje: `cut`, `skip`, `window`, `multiple` (`segment` – wszystkie osoby po etykiecie, `occurrences` – po każdym wystąpieniu, np. linii kropek pod podpisem), `exclude`, `only_if`, `nth`, `default`. Etykieta konkurencyjnego pola tego samego typu kończy okno – tak rozdzielamy rachunek nadawcy i odbiorcy.
+**Rule engine** (`src/extraction/rule_extractor.py`). It matches labels, sections and cuts against a "folded" copy of the text (lowercase, no Polish characters, same positions), so rules survive OCR losses. Values are read from the original text and normalised by their value type.
 
-Klasyfikator (`KeywordClassifier`) szuka fraz `keywords` na pierwszych `pages` stronach, a fraz `head_keywords` tylko w nagłówku dokumentu (`head_chars` znaków) – tam dokument mówi, czym jest: orzeczenie KIO zaczyna się od „Sygn. akt … WYROK”, a prawdziwe odwołania cytują orzeczenia dopiero w uzasadnieniu (wykryte na skanach – ujemne słowa w całym tekście odrzucały prawdziwe odwołania). Dopasowanie ignoruje wielkość liter, białe znaki i polskie znaki diakrytyczne (OCR gubi ogonki: „ODWOLANIE”, „Odwołujacy”); wygrywa typ z najwyższą sumą, jeśli osiąga `min_score` i nie remisuje z innym.
+Ways to read a field (`FieldRule`):
+- `lookup` – a table keyed by an earlier field's value (e.g. reason description by code),
+- `classify` – the pattern that matches first,
+- `labels` – the value after a label (labels tried in config order),
+- otherwise – the start of the section.
 
-Zadania LLM (`[[llm_tasks]]`, model `LlmTaskRule`) to wąskie pytania po regułach, w configu typu: `extract` – odpowiedź o kontekst (pierwsza istniejąca sekcja z listy) dla wskazanych pól, w trybie `decide` (poprawna odpowiedź zastępuje regułę) albo `fill` (tylko puste pola); `nominative` – nazwiska w mianowniku. Schemat odpowiedzi powstaje z typów wartości (kody ograniczone do `choices`), `when` uruchamia zadanie tylko, gdy wzorzec pasuje (np. końcówki przypadków zależnych w nazwiskach). Pola `lookup` (np. opis powodu) są liczone ponownie po LLM.
+The value is the first group of `pattern`, a candidate of the value type (date, amount, account, person name …), or the text to the end of the line (including wrapped lines). Options: `cut`, `skip`, `window`, `multiple` (`segment` – all people after a label, `occurrences` – after each match, e.g. each dotted signature line), `exclude`, `only_if`, `nth`, `default`. A label of a competing field of the same type ends the search window – this is how sender and recipient accounts are kept apart.
 
-## 5. Model danych (Pydantic)
+**Classifier** (`KeywordClassifier`). It looks for `keywords` in the first `pages` pages, and for `head_keywords` only in the document header (`head_chars` characters). The header is where a document says what it is: a KIO ruling starts with "Sygn. akt … WYROK", while real appeals quote rulings only later, in the reasoning. (We found this on scans – negative keywords searched in the whole text were rejecting real appeals.) Matching ignores case, whitespace and Polish accents (OCR drops them: "ODWOLANIE", "Odwołujacy"). The type with the highest total wins, if it reaches `min_score` and does not tie with another type.
 
-Jedno miejsce na każdą regułę normalizacji: typy wartości w `src/value_types.py` (`VALUE_TYPES`). Każdy ma typ Pythona, normalizator i informację, czy dokumenty zapisują wartość wprost (kody, flagi i opisy ze słownika są interpretowane). Liście `schema.json` nazywają te typy; nieznana nazwa zatrzymuje wczytywanie configu.
+**LLM tasks** (`[[llm_tasks]]`, model `LlmTaskRule`) are narrow questions asked after the rules, defined in the type's config:
+- `extract` – asks about a context (the first section from the list that exists) for the given fields, in `decide` mode (a valid answer replaces the rule's value) or `fill` mode (only empty fields);
+- `nominative` – converts surnames to the nominative case.
 
-| Typ | Normalizacja (przykład) |
+The answer schema is built from the value types (codes limited to `choices`). `when` runs a task only if a pattern matches (e.g. non-nominative endings in surnames). `lookup` fields (e.g. reason description) are recalculated after the LLM.
+
+## 5. Data model (Pydantic)
+
+Each normalisation rule lives in one place: value types in `src/value_types.py` (`VALUE_TYPES`). Each has a Python type, a normaliser, and a flag saying whether documents state the value directly (codes, flags and dictionary descriptions are interpreted). The leaves of `schema.json` name these types; an unknown name stops config loading.
+
+| Type | Normalisation (example) |
 |---|---|
-| `date` | „24 września 2026 r.”, `24.09.2026`, `24/09/2026` → `2026-09-24`; niepoprawna data → null |
-| `amount` | „15 000,00 zł”, `15.000,00` → `15000.0` |
-| `nip`, `regon`, `krs`, `pesel` | same cyfry o właściwej długości; KRS uzupełniany zerami do 10 cyfr |
-| `account` | same cyfry, bez prefiksu `PL` (konwencja 138 ze 140 referencji) |
+| `date` | "24 września 2026 r.", `24.09.2026`, `24/09/2026` → `2026-09-24`; invalid date → null |
+| `amount` | "15 000,00 zł", `15.000,00` → `15000.0` |
+| `nip`, `regon`, `krs`, `pesel` | digits only, correct length; KRS padded with zeros to 10 digits |
+| `account` | digits only, no `PL` prefix (the convention in 138 of 140 references) |
 | `ted`, `bzp` | `2026/S 245-999449` → `999449-2026`; `2026/BZP 00999778/03` → `2026/BZP00999778/03` |
-| `person_name` | bez tytułów i funkcji („adw.”, „r. pr.”, „Prezes Zarządu”), WERSALIKI → „Jan Kowalski” |
-| `email`, `text` | e-mail małymi literami; tekst z pojedynczymi spacjami, bez cudzysłowów wokół |
-| `flag`, `reason_id`, `party_type`, `reason_description` | 0/1; 1–12; `osoba_prawna`/`osoba_fizyczna`; tekst |
+| `person_name` | no titles or roles ("adw.", "r. pr.", "Prezes Zarządu"), UPPERCASE → "Jan Kowalski" |
+| `email`, `text` | e-mail in lowercase; text with single spaces, no surrounding quotes |
+| `flag`, `reason_id`, `party_type`, `reason_description` | 0/1; 1–12; `osoba_prawna`/`osoba_fizyczna`; text |
 
 ```mermaid
 flowchart LR
-    Y["schema.json<br/>kształt + typ każdego liścia"] --> CM["pydantic.create_model<br/>(output_model.py)"]
+    Y["schema.json<br/>shape + type of each leaf"] --> CM["pydantic.create_model<br/>(output_model.py)"]
     R["VALUE_TYPES<br/>nip, date, account, amount, …"] --> CM
-    CM --> DM["model dokumentu"]
-    DM --> U1["normalizacja wartości z reguł i LLM"]
-    DM --> U2["JSON schema dla LLM<br/>+ walidacja odpowiedzi"]
-    DM --> U3["kompletna struktura wyjścia<br/>(brak = null, aliasy np. przez-pelnomocnika)"]
+    CM --> DM["document model"]
+    DM --> U1["normalises values from rules and LLM"]
+    DM --> U2["JSON schema for the LLM<br/>+ answer validation"]
+    DM --> U3["complete output structure<br/>(missing = null, aliases e.g. przez-pelnomocnika)"]
 ```
 
-Rozpoznany dokument zawsze dostaje pełną strukturę (`SkeletonExtractor`: wszystkie wartości null, jeden element na listę, jak w szablonach organizatora); ekstraktory ją wypełniają. Sprawdzenie: wszystkie 2704 wartości z referencji przechodzą przez modele bez zmian, poza 2 numerami rachunków ze skanów zapisanymi z `PL`.
+A recognised document always gets the full structure (`SkeletonExtractor`: all values null, one item per list, like the organiser's templates); the extractors fill it in. Check: all 2704 reference values pass through the models unchanged, except 2 account numbers from scans written with `PL`.
 
-Zasady:
-- Model budowany z `schema.json` (`create_model`), nie pisany ręcznie per typ – nowy typ dokumentu nie wymaga kodu.
-- Wartości nieparsowalne → `None` + powód w trace; jedno złe pole nie odrzuca dokumentu.
-- Sumy kontrolne (NIP, REGON, PESEL) nie zerują pól – służą do wyboru między kandydatami. Dane syntetyczne mają ~40% NIP-ów z błędną sumą.
-- Pochodzenie wartości (reguła/LLM, strona, fragment) w osobnej strukturze, nie w modelu wyjściowym.
+Principles:
+- The model is built from `schema.json` (`create_model`), not written by hand per type – a new document type needs no code.
+- Values that cannot be parsed → `None`, with the reason in the trace; one bad field does not reject the document.
+- Checksums (NIP, REGON, PESEL) do not clear fields – they are used to choose between candidates. About 40% of NIPs in the synthetic data have a wrong checksum.
+- The value source (rule/LLM, page, snippet) is kept in a separate structure, not in the output model.
 
-## 6. Reguły vs LLM
+## 6. Rules vs LLM
 
-Wyniki (226 dokumentów, strict):
+Results (226 documents, strict):
 
-| Eksperyment | F1 | syntetyczne | skany | odwołanie | pełnomocnictwo | przelew | LLM (zimny przebieg) |
+| Experiment | F1 | synthetic | scans | odwołanie | pełnomocnictwo | przelew | LLM (cold run) |
 |---|---|---|---|---|---|---|---|
-| `rules-v1` (same reguły) | 0,950 | 0,969 | 0,822 | 0,959 | 0,921 | 0,958 | – |
-| `hybrid-v1` (reguły + Bielik-11B) | **0,954** | **0,973** | 0,822 | **0,965** | 0,921 | 0,958 | 70 wywołań, 182 tokeny i ~0,1 s na dokument |
+| `rules-v1` (rules only) | 0.950 | 0.969 | 0.822 | 0.959 | 0.921 | 0.958 | – |
+| `hybrid-v1` (rules + Bielik-11B) | **0.954** | **0.973** | 0.822 | **0.965** | 0.921 | 0.958 | 70 calls, 182 tokens and ~0.1 s per document |
 
-Wybór modelu (te same zadania LLM, zimny przebieg):
+Model choice (same LLM tasks, cold run):
 
-| Model | Rozmiar | F1 | kod powodu | tokeny / dok. | czas LLM | błędne odpowiedzi |
+| Model | Size | F1 | reason code | tokens / doc | LLM time | bad answers |
 |---|---|---|---|---|---|---|
-| **Bielik-11B-v3.0** | 11B (gęsty) | **0,954** | **0,921** | 182 | 22 s | 0 |
-| Mistral-Small-3.2 | 24B (gęsty) | 0,952 | 0,892 | 139 | 25 s | 0 |
-| gemma-4-26B-A4B | 26B (MoE, 4B aktywne) | 0,949 | 0,835 | 133 | 10 s | 0 |
-| Qwen3.8-27B | 27B (gęsty, „myślący”) | 0,952 | 0,892 | 255 | 256 s | 17 (rozumowanie zjada limit 200 tokenów) |
+| **Bielik-11B-v3.0** | 11B (dense) | **0.954** | **0.921** | 182 | 22 s | 0 |
+| Mistral-Small-3.2 | 24B (dense) | 0.952 | 0.892 | 139 | 25 s | 0 |
+| gemma-4-26B-A4B | 26B (MoE, 4B active) | 0.949 | 0.835 | 133 | 10 s | 0 |
+| Qwen3.8-27B | 27B (dense, "thinking") | 0.952 | 0.892 | 255 | 256 s | 17 (reasoning uses up the 200-token limit) |
 
-Bielik-11B – najmniejszy model gęsty i zarazem najlepszy – zostaje domyślny (`hybrid-v1`). Gemma wypada poniżej samych reguł, więc nie przechodzi bramki. Jeśli punktacja rozmiaru modelu okaże się surowa, `rules-v1` (0,950) jest gotowym wariantem bez LLM.
+Bielik-11B is the smallest dense model and also the best, so it stays the default (`hybrid-v1`). Gemma scores below rules alone, so it does not pass. If the model-size scoring turns out to be harsh, `rules-v1` (0.950) is a ready option without an LLM.
 
-Negatywy: bez wymyślonych wartości w obu. LLM w `hybrid-v1`: kod powodu na zdaniu „Zamawiający w dniu … <czynność>.” (sekcja kończy się na zdaniu – kolejne zdania „Wcześniej, w dniu …” i treść zarzutów myliły model: F1 kodu 0,47 → 0,56 → 0,92); syntetyczne kody wszystkie poprawne, 6 błędów na skanach jak w regułach (skany nie mają zdania o czynności; lista zaskarżonych czynności jako kontekst dała 0,37). Mianownik nazwisk: na danych syntetycznych nie uruchamia się (nazwiska są w mianowniku). Pola poniżej 0,9:
+Negatives: no invented values in either experiment.
 
-| Pole | F1 | Przyczyna | Dalej |
+What the LLM does in `hybrid-v1`:
+- **Reason code** – read from the sentence "Zamawiający w dniu … <action>." The section ends at that sentence: the following sentences ("Wcześniej, w dniu …") and the list of complaints confused the model. Code F1 went 0.47 → 0.56 → 0.92. All synthetic codes are correct; 6 errors on scans, the same as the rules (scans do not have the action sentence; using the list of contested actions as context gave 0.37).
+- **Nominative surnames** – does not run on the synthetic data (surnames are already in the nominative).
+
+Fields below 0.9:
+
+| Field | F1 | Cause | Next step |
 |---|---|---|---|
-| `Zamawiajacy[].prowadzacy_postepowanie` | 0,00 | ustawiane tylko przy kilku zamawiających (2 z 60 odwołań); reguły biorą pierwszego | LLM: wiele podmiotów |
-| `mocodawca[].podpisujacy[]` | 0,82 | konsorcja (podpisy kilku mocodawców), nazwiska w układach kolumnowych | LLM |
-| `czynnosc_powod_id`, `czynnosc_opis` | 0,86 → 0,92 z LLM | reguły: „odpowiedzi do SWZ” vs „publikacja SWZ”, zaniechanie unieważnienia (przyklad_49/58); oba: skany bez zdania „Zamawiający w dniu” | LLM na zdaniu o czynności (`hybrid-v1`) |
+| `Zamawiajacy[].prowadzacy_postepowanie` | 0.00 | set only when there are several contracting authorities (2 of 60 appeals); rules take the first one | LLM: multiple parties |
+| `mocodawca[].podpisujacy[]` | 0.82 | consortia (several principals sign), names in column layouts | LLM |
+| `czynnosc_powod_id`, `czynnosc_opis` | 0.86 → 0.92 with LLM | rules: "odpowiedzi do SWZ" vs "publikacja SWZ", failure to cancel (przyklad_49/58); both: scans without the "Zamawiający w dniu" sentence | LLM on the action sentence (`hybrid-v1`) |
 
-Pozostałe straty: drugi mocodawca/odwołujący w konsorcjach, kolejność kolumn w 2 układach przelewów, błędy OCR na skanach (wartości w tekście 0,85–0,97), konwencja `PL` w 2 rachunkach ze skanów, rachunek UZP w 2 skanach przelewów, którego nie ma w tekście.
+Other losses: second principal/appellant in consortia, column order in 2 transfer layouts, OCR errors on scans (values in text 0.85–0.97), the `PL` convention in 2 scanned accounts, the UZP account in 2 transfer scans that is not in the text.
 
-| Typ | Reguły | LLM |
+| Type | Rules | LLM |
 |---|---|---|
-| klasyfikacja | słowa kluczowe | tylko przy niejednoznacznym wyniku |
-| `odwolanie` | data, miejscowość, strony (sekcje „Odwołujący:”/„Zamawiający:”), KRS/NIP/REGON, pełnomocnik, e-mail, BZP, TED, nr postępowania, tytuł, data i powód czynności (wzorce) | **powód zaskarżenia** przy niepewnych wzorcach, kilku zamawiających |
-| `pelnomocnictwo` | mocodawca (nazwa z formą prawną, KRS, NIP, typ), pełnomocnicy, podpisujący, PESEL | **mianownik nazwisk**, konsorcja |
-| `przelew` | wszystkie pola (etykieta → wartość) | tylko fallback |
-| pola pochodne | `czynnosc_opis` ze słownika po kodzie, `przez-pelnomocnika` z obecności pełnomocnika | – |
+| classification | keywords | only when the result is unclear |
+| `odwolanie` | date, place, parties (sections "Odwołujący:"/"Zamawiający:"), KRS/NIP/REGON, attorney, e-mail, BZP, TED, procedure number, title, date and reason of the action (patterns) | **appeal reason** when patterns are unsure, several contracting authorities |
+| `pelnomocnictwo` | principal (name with legal form, KRS, NIP, type), attorneys, signatories, PESEL | **nominative surnames**, consortia |
+| `przelew` | all fields (label → value) | fallback only |
+| derived fields | `czynnosc_opis` from the dictionary by code, `przez-pelnomocnika` from whether an attorney is present | – |
 
 ```mermaid
 sequenceDiagram
     participant X as extraction
     participant C as .cache
     participant API as LLM API (EU)
-    X->>X: wycinek tekstu + pola do uzupełnienia
-    X->>C: klucz = hash(wycinek, prompt, model)
-    alt trafienie
-        C-->>X: odpowiedź
-    else brak
+    X->>X: text snippet + fields to fill
+    X->>C: key = hash(snippet, prompt, model)
+    alt hit
+        C-->>X: answer
+    else miss
         X->>API: prompt + JSON schema (temperature 0)
         API-->>X: JSON
-        X->>C: zapis
+        X->>C: save
     end
-    X->>X: walidacja modelem Pydantic
-    X->>X: wartość obecna w tekście? jeśli nie → null
+    X->>X: validate with the Pydantic model
+    X->>X: value present in the text? if not → null
 ```
 
-Klient: `LlmClient` (SDK `openai` z `base_url` dostawcy, bez LangChain); endpoint i model w `LlmSettings` (`src/run.py`), klucz w `.env`. Odpowiedzi w JSON wg schematu, z instrukcją „zwarty JSON w jednej linii” (bez niej małe modele produkowały puste znaki do limitu), `max_tokens` 200, jedna ponowna próba przy złej odpowiedzi; w cache trafiają tylko odpowiedzi poprawne (i są ponownie walidowane przy odczycie). Wpis w `.cache/llm/` przechowuje zapytanie, odpowiedź, tokeny i czas – każdą wartość z LLM można odtworzyć do promptu, a raport pokazuje koszt zimnego przebiegu. Niezawodność: wartość pisana musi wystąpić w kontekście, nazwisko po zmianie musi zachować rdzenie słów, błąd zostawia wartość z reguł; po 3 nieudanych żądaniach z rzędu (np. awaria API) klient przestaje wołać model do końca przebiegu – zostają same reguły.
+**Client.** `LlmClient` uses the `openai` SDK with the provider's `base_url` (no LangChain). Endpoint and model are in `LlmSettings` (`src/run.py`), the key is in `.env`.
+- Answers are JSON following the schema, with the instruction "compact JSON on one line" (without it, small models output whitespace until the limit).
+- `max_tokens` 200, one retry on a bad answer.
+- Only valid answers are cached, and they are validated again when read.
+- An entry in `.cache/llm/` stores the request, answer, tokens and time – every LLM value can be traced back to its prompt, and the report shows the cost of a cold run.
+- Safety: a written value must appear in the context; a surname after conversion must keep its word stems; on error, the rule's value stays. After 3 failed requests in a row (e.g. API down) the client stops calling the model for the rest of the run – only rules are used.
 
-## 7. Konwersja i budżet czasu
+## 7. Conversion and time budget
 
-Ustawienia (`ConversionSettings`, wybrane pomiarem): pierwsze **2 strony**, TableFormer **ACCURATE**, RapidOCR (pl) tylko na stronach bez warstwy tekstowej, 4 wątki CPU. Pomiar: zimne konwersje wszystkich 226 dokumentów, Apple M4, tylko CPU.
+Settings (`ConversionSettings`, chosen by measurement): first **2 pages**, TableFormer **ACCURATE**, RapidOCR (Polish) only on pages without a text layer, 4 CPU threads. Measured on cold conversions of all 226 documents, Apple M4, CPU only.
 
-| Pytanie | Wynik | Decyzja |
+| Question | Result | Decision |
 |---|---|---|
-| Na których stronach są wartości z referencji? | strona 1; wyjątek: `czynnosc_dzien` na stronie 2 (5/60 syntetycznych, 3/10 skanów); strony 3–4 nic nie dodają | `max_pages = 2`: skan odwołania 12,6–13,7 s → 5,9–6,9 s |
-| Tabele: FAST / ACCURATE / bez struktury | wartości w tekście: ACCURATE i „bez struktury” identycznie w każdym polu; FAST gubi 6 (rozbite komórki przelewów, podpisujący) | ACCURATE: wiersze „etykieta \| wartość” dla reguł, koszt ~0,1 s/PDF |
-| Czas na dokument | warstwa tekstowa 0,3–0,5 s; skan 1-stronicowy 2,2–2,6 s; skan odwołania 5,6 s (2,8 s/stronę); ładowanie modeli ~5 s raz na przebieg | – |
-| Pamięć | szczyt ~4,8 GB | mieści się w 16 GB |
+| Which pages hold the reference values? | page 1; exception: `czynnosc_dzien` on page 2 (5/60 synthetic, 3/10 scans); pages 3–4 add nothing | `max_pages = 2`: appeal scan 12.6–13.7 s → 5.9–6.9 s |
+| Tables: FAST / ACCURATE / no structure | values in text: ACCURATE and "no structure" are the same for every field; FAST loses 6 (split cells in transfers, signatories) | ACCURATE: "label \| value" rows for the rules, costs ~0.1 s/PDF |
+| Time per document | text layer 0.3–0.5 s; 1-page scan 2.2–2.6 s; appeal scan 5.6 s (2.8 s/page); loading models ~5 s once per run | – |
+| Memory | peak ~4.8 GB | fits in 16 GB |
 
-Projekcja 150 PDF-ów (50 spraw × odwołanie, pełnomocnictwo, przelew), sama konwersja: **1,0 min** bez skanów, 3,6 min przy 1/3 skanów, **8,6 min**, gdy wszystko jest skanem. LLM (`hybrid-v1`): jedno wywołanie na odwołanie, ~0,3 s – ok. 15 s na 50 spraw. Całość mieści się w ~9 minutach także przy samych skanach. Limit to 45 min, nasz cel ≤ 30 min: zostaje zapas na ~3× wolniejszy laptop, równoległość nie jest potrzebna. Gdy API LLM nie działa, klient po 3 nieudanych żądaniach przestaje je wysyłać – przebieg kończy się regułami, bez czekania na timeouty.
+Estimate for 150 PDFs (50 cases × appeal, power of attorney, transfer), conversion only: **1.0 min** with no scans, 3.6 min with 1/3 scans, **8.6 min** if everything is a scan. LLM (`hybrid-v1`): one call per appeal, ~0.3 s – about 15 s for 50 cases. The whole run fits in ~9 minutes even with only scans. The limit is 45 min and our target is ≤ 30 min, so there is room for a ~3× slower laptop; no parallelism needed. If the LLM API is down, the client stops after 3 failed requests – the run finishes with rules, without waiting for timeouts.
 
-Jakość OCR: wartości w tekście na skanach 0,85 (przelew) – 0,97 (pełnomocnictwo) wobec 0,996–1,000 w PDF-ach z warstwą tekstową. Braki to błędy znaków (zgubione ogonki: „opłata” → „oplata”, pomylone litery: „pełnomocnictwa” → „peinomocnectwa”), nie układ strony. Kandydat na osobny eksperyment: większy model rozpoznawania PP-OCRv6 (obecnie `small`) – budżet czasu na to pozwala.
+OCR quality: values in text on scans 0.85 (transfer) – 0.97 (power of attorney), versus 0.996–1.000 for PDFs with a text layer. The gaps are character errors (lost accents: "opłata" → "oplata", wrong letters: "pełnomocnictwa" → "peinomocnectwa"), not page layout. Idea for a separate experiment: the larger PP-OCRv6 recognition model (currently `small`) – the time budget allows it.
 
-## 8. Cache, trace, determinizm
+## 8. Cache, traces, determinism
 
-- `.cache/` – konwersje Docling i odpowiedzi LLM, klucz = hash pliku/wycinka + ustawienia.
-- `traces/` – dla każdego dokumentu (`traces/production/<sprawa>/<plik>.json` w trybie run, `traces/runs/<przebieg>/traces/` w ewaluacji): status i czas konwersji, wyniki klasyfikacji wszystkich typów oraz każda wartość z pochodzeniem – źródło (`rule`/`llm`/`derived`/`default`), konkretna reguła (etykieta, wzorzec, klasa) lub zadanie LLM, strona i fragment tekstu. Przykład:
+- `.cache/` – Docling conversions and LLM answers, key = hash of the file/snippet + settings.
+- `traces/` – one file per document (`traces/production/<case>/<file>.json` in run mode, `traces/runs/<run>/traces/` in evaluation). It holds the conversion status and time, classification scores for all types, and every value with its source: the method (`rule`/`llm`/`derived`/`default`), the exact rule (label, pattern, class) or LLM task, the page and the text snippet. Example:
 
   ```json
   {"path": "OdwolanieKIO.czynnosc_powod_id", "value": 8, "source": "llm", "detail": "task contested_action",
    "page": 2, "snippet": "Zamawiający w dniu 23 sierpnia 2026 roku przekazał informację o wyniku postępowania, z której wynika, że zaniechał wykluczenia wykonawcy …"}
   ```
 
-  Sprawdzenie: wszystkie 2262 niepuste wartości wyjściowe (226 dokumentów, `rules-v1` i `hybrid-v1`) mają wpis w trace z tą samą wartością; stronę i fragment ma każda poza wartością domyślną.
-- `output/` – wyłącznie oceniane pliki JSON.
-- Deterministycznie: posortowane pliki, temperatura 0, cache.
+  Check: all 2262 non-empty output values (226 documents, `rules-v1` and `hybrid-v1`) have a trace entry with the same value; all except default values have a page and snippet.
+- `output/` – only the scored JSON files.
+- Deterministic: sorted files, temperature 0, cache.
 
-## 9. Ewaluacja
+## 9. Evaluation
 
 ```mermaid
 flowchart LR
-    D["zbiory ewaluacyjne (EVAL_SETS):<br/>synthetic: dane/przyklad_*/*.pdf<br/>negatives: dane/negatywne/*.pdf<br/>scans: dane/skany/*/*/*.pdf"] --> P["Pipeline.run()<br/>(MODE = eval)"]
-    P --> CMP["Evaluator.add() – dokument po dokumencie<br/>referencja: #lt;nazwa#gt;.json obok PDF-a<br/>(potwierdzenie_przelewu → przelew.json);<br/>brak referencji → negatyw {}<br/>typ z kluczy JSON-a (schema.json)"]
-    CMP --> LOG["log: postęp, bieżące F1,<br/>pomyłki klasyfikacji"]
+    D["evaluation sets (EVAL_SETS):<br/>synthetic: dane/przyklad_*/*.pdf<br/>negatives: dane/negatywne/*.pdf<br/>scans: dane/skany/*/*/*.pdf"] --> P["Pipeline.run()<br/>(MODE = eval)"]
+    P --> CMP["Evaluator.add() – one document at a time<br/>reference: #lt;name#gt;.json next to the PDF<br/>(potwierdzenie_przelewu → przelew.json);<br/>no reference → negative {}<br/>type from the JSON keys (schema.json)"]
+    CMP --> LOG["log: progress, current F1,<br/>classification mistakes"]
     CMP --> RUN["traces/runs/#lt;run id#gt;/<br/>output/, documents.jsonl,<br/>errors.jsonl, run.log, report.json"]
-    CMP --> REP["eval/reports/#lt;run id#gt;.json<br/>run info + config + wyniki<br/>→ ranking przebiegów"]
+    CMP --> REP["eval/reports/#lt;run id#gt;.json<br/>run info + config + results<br/>→ ranking of runs"]
 ```
 
-- Eksperyment = klasa pipeline'u + `PipelineConfig`; lista w `src/run.py`, wybór przez `EVAL_EXPERIMENTS`, szybki podzbiór przez `EVAL_CASES`.
-- Zbiory ewaluacyjne (`EVAL_SETS`): `synthetic` (przykłady z warstwą tekstową, w tym negatywy wewnątrz spraw), `negatives`, `scans` (skany – ścieżka OCR). Wyniki raportowane osobno dla każdego zbioru (`by_subset`), żeby słabość jednego rodzaju wejścia nie ginęła w średniej.
-- Referencja to `<nazwa>.json` obok PDF-a; PDF bez referencji to negatyw (organizator umieszcza je też wewnątrz spraw). Oczekiwany typ rozpoznajemy po kluczach najwyższego poziomu (zgodnie z `schema.json`), nie po nazwie pliku – README: nazwy plików mogą być dowolne.
-- Raport (commitowany) zawiera commit gita, czas na dokument, pełny config, snapshot `config/doc_types/*` i wyniki; ranking porównuje tylko przebiegi na tym samym zbiorze dokumentów (`dataset_id`).
-- Cały zbiór treningowy, bez podziału na dev/holdout (brak uczenia; holdout z tego samego generatora nie mówi nic o realnych danych).
-- F1 na polach: JSON spłaszczony do liści `ścieżka → wartość`; trafienie = TP, zła wartość = FP + FN, brak = FN, null po obu stronach pomijany; elementy list dopasowywane po największej zgodności.
-- Dwie liczby: **strict** (dokładna równość) i **znormalizowana** – różnica to straty na formatowaniu.
-- **Wartości w tekście** („in text”, `coverage`): udział wartości referencyjnych obecnych w wyciągniętym tekście, w typowych zapisach (daty `24.09.2026`/`24 września 2026`, kwoty `15 000,00`, identyfikatory jako ciąg cyfr, TED także jako `2026/S 245-999449`). To sufit ekstrakcji z tego tekstu i kontrola konwersji – rozbite komórki tabel i błędy OCR widać przed napisaniem reguł. Typ wartości pola bierzemy z `schema.json`; pola interpretowane (`reason_id`, `reason_description`, `flag`, `party_type`) pomijamy.
-- **Czas zimnego przebiegu**: czas konwersji każdego PDF-a jest zapisywany w cache razem z konwersją, więc raport pokazuje średni i maksymalny czas na dokument w każdym zbiorze również przy ciepłym cache.
-- Ryzyko realnych danych sprawdzamy osobno: zbiór `scans` organizatora (ścieżka OCR), opcjonalnie ręcznie opisane realne dokumenty.
+- An experiment = a pipeline class + `PipelineConfig`. The list is in `src/run.py`; pick with `EVAL_EXPERIMENTS`, use a quick subset with `EVAL_CASES`.
+- Evaluation sets (`EVAL_SETS`): `synthetic` (examples with a text layer, including negatives inside cases), `negatives`, `scans` (the OCR path). Results are reported per set (`by_subset`), so a weakness in one kind of input is not hidden in the average.
+- The reference is `<name>.json` next to the PDF; a PDF without a reference is a negative (the organiser also puts these inside cases). The expected type is detected from the top-level keys (matching `schema.json`), not from the file name – the README says file names can be anything.
+- The report (committed) contains the git commit, time per document, the full config, a snapshot of `config/doc_types/*` and the results. The ranking compares only runs on the same set of documents (`dataset_id`).
+- We use the whole training set, with no dev/holdout split (nothing is trained; a holdout from the same generator says nothing about real data).
+- Field F1: the JSON is flattened to leaves `path → value`. Match = TP, wrong value = FP + FN, missing = FN, null on both sides is skipped. List items are matched by best agreement.
+- Two numbers: **strict** (exact equality) and **normalised** – the difference is what formatting costs.
+- **Values in text** ("in text", `coverage`): the share of reference values that appear in the extracted text, in common formats (dates `24.09.2026`/`24 września 2026`, amounts `15 000,00`, identifiers as a digit string, TED also as `2026/S 245-999449`). This is the upper limit for extraction from that text and a check on conversion – split table cells and OCR errors show up before writing rules. The field's value type comes from `schema.json`; interpreted fields (`reason_id`, `reason_description`, `flag`, `party_type`) are skipped.
+- **Cold run time**: the conversion time of each PDF is stored in the cache with the conversion, so the report shows the average and maximum time per document in each set even with a warm cache.
+- Real-data risk is checked separately: the organiser's `scans` set (OCR path), and optionally hand-labelled real documents.
 
-## 10. Dodanie nowego typu dokumentu
+## 10. Adding a new document type
 
-Tylko konfiguracja: `config/doc_types/<typ>/schema.json` (kształt wyjścia z typami wartości) i `doc_type.toml` (słowa kluczowe, sekcje, reguły pól, opcjonalnie zadania LLM). Instrukcja krok po kroku z przykładem sprawdzonym na danych: [nowy_typ_dokumentu.md](nowy_typ_dokumentu.md). Kod się nie zmienia, chyba że potrzebny jest nowy rodzaj wartości – wtedy jeden normalizator w `VALUE_TYPES`.
+Configuration only: `config/doc_types/<type>/schema.json` (output shape with value types) and `doc_type.toml` (keywords, sections, field rules, optional LLM tasks). Step-by-step guide with an example tested on the data: [adding_document_type.md](adding_document_type.md). The code does not change, unless you need a new kind of value – then add one normaliser to `VALUE_TYPES`.
 
-## 11. Otwarte kwestie
+## 11. Open questions
 
-- Negatywne dokumenty: README mówi „pusty plik .json”, przykładowe wyjście organizatora ma 0 bajtów; przyjmujemy `{}` – do potwierdzenia.
-- Słownik `czynnosc_powod_id` (1–12) jest w `dane/oczekiwane-json/czynnosc_powod_id_dict.md`; 12 = „Projektowane postanowienia umowy” nie występuje w danych treningowych.
-- `z_rachunku`/`na_rachunek`: referencje treningowe bez prefiksu `PL`, 2 z 10 skanów z prefiksem; normalizator idzie za większością (bez `PL`) – do zmiany, jeśli organizator wskaże inaczej.
-- Organizator zapowiada zmianę sposobu oceny (README, „stay tuned”) – limit czasu: 150 PDF-ów w 45 minut (projekcja w sekcji 7).
-- `pesel`: w szablonie liczba, w referencjach tekst.
-- Dokładny sposób liczenia F1 przez organizatora nie jest opublikowany.
+- Negative documents: the README says "an empty .json file", while the organiser's sample output is 0 bytes. We write `{}` – to be confirmed.
+- The `czynnosc_powod_id` dictionary (1–12) is in `dane/oczekiwane-json/czynnosc_powod_id_dict.md`; 12 = "Projektowane postanowienia umowy" does not appear in the training data.
+- `z_rachunku`/`na_rachunek`: training references have no `PL` prefix, 2 of 10 scans have it. The normaliser follows the majority (no `PL`) – to change if the organiser says otherwise.
+- The organiser has announced a change to the scoring (README, "stay tuned") – time limit: 150 PDFs in 45 minutes (estimate in section 7).
+- `pesel`: a number in the template, a string in the references.
+- The organiser has not published exactly how F1 is calculated.

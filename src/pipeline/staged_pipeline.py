@@ -34,7 +34,12 @@ class StagedPipeline(Pipeline):
     @classmethod
     def from_config(cls, config: PipelineConfig, workspace: Workspace) -> Self:
         doc_types = load_doc_types(workspace.doc_types_dir)
-        llm = LlmClient(config.llm, DiskCache(workspace.cache_dir / "llm")) if config.llm else None
+        llm = None
+        if config.llm and config.llm.api_key:
+            llm = LlmClient(config.llm, DiskCache(workspace.cache_dir / "llm"))
+        elif config.llm:  # the LLM tasks only refine rule values, so rules alone still give complete output
+            logger.warning("%s is not set: %s runs without the LLM (rules only, as rules-v1)",
+                           config.llm.api_key_env, config.name)
         return cls(
             text_extractor=DoclingTextExtractor(
                 config.conversion, workspace.models_dir, DiskCache(workspace.cache_dir / "docling")),

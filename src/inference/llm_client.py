@@ -41,6 +41,11 @@ class LlmSettings(BaseModel):
     max_retries: int = 1  # transport retries (connection errors, 5xx)
     max_consecutive_failures: int = 3  # then the endpoint counts as down for the rest of the run (rules only)
 
+    @property
+    def api_key(self) -> str | None:
+        """The key from the environment (`.env`); None if it is not set."""
+        return os.environ.get(self.api_key_env) or None
+
 
 class LlmError(Exception):
     """The LLM call failed or its answer is unusable."""
@@ -62,7 +67,7 @@ class LlmClient:
     """Chat completions with JSON-schema-constrained, validated answers."""
 
     def __init__(self, settings: LlmSettings, cache: DiskCache) -> None:
-        api_key = os.environ.get(settings.api_key_env)
+        api_key = settings.api_key
         if not api_key:
             raise ValueError(f"Environment variable {settings.api_key_env} is not set (add it to .env)")
         self._settings = settings

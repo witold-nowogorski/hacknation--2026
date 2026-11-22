@@ -32,6 +32,9 @@ class ExperimentRunner:
 
     def run(self, experiment: Experiment) -> EvalReport:
         """Process and score every document, then save the report and log the leaderboard."""
+        llm = experiment.config.llm
+        if llm and not llm.api_key:  # a rules-only run must not be reported under an LLM experiment's name
+            raise SystemExit(f"{llm.api_key_env} is not set (add it to .env): cannot evaluate {experiment.name}")
         started_at = datetime.now().astimezone()
         run_directory = RunDirectory.create(self._workspace.runs_dir, f"{started_at:%Y%m%d-%H%M%S}_{experiment.name}")
 
