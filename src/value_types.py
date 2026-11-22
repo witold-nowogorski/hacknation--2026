@@ -21,16 +21,21 @@ FOLD_DIACRITICS = str.maketrans("ąćęłńóśźżıĄĆĘŁŃÓŚŹŻ", "aceln
 # Words before a person's name that are not part of it: titles and company roles.
 NAME_PREFIXES = frozenset({"adw", "adwokat", "adwokatka", "r", "pr", "radca", "radczyni", "prawny", "prawna",
                            "mec", "dr", "hab", "prof", "mgr", "inż", "pan", "pani", "prezes", "wiceprezes",
-                           "członek", "zarządu", "wspólnik", "prokurent", "pełnomocnik"})
+                           "członek", "zarządu", "wspólnik", "prokurent", "pełnomocnik", "za",
+                           # organisation words: "Kancelaria Prawna" is not a person
+                           "kancelaria", "spółka", "biuro", "firma", "zakład", "urząd", "gmina", "bank"})
 QUOTES = "\"'„”“«»"
 NUMERIC_DATE = re.compile(r"(\d{1,2})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{4})")
 ISO_DATE = re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})")
-WORD_DATE = re.compile(r"(\d{1,2})\s+([a-z]+)\s+(\d{4})")
+WORD_DATE = re.compile(r"(\d{1,2})\s*([a-z]+)\s+(\d{4})")
 TED_S_FORM = re.compile(r"(\d{4})/S\s*\d{1,3}\s*-\s*(\d{5,8})", re.IGNORECASE)
 TED_NUMBER = re.compile(r"(?<!\d)(\d{5,8})\s*-\s*(\d{4})(?!\d)")
 BZP_NUMBER = re.compile(r"(\d{4})/BZP(\d{8})(/\d{2})?", re.IGNORECASE)
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 NON_DIGITS = re.compile(r"\D")
+UPPER = "A-ZĄĆĘŁŃÓŚŹŻ"
+LOWER = "a-ząćęłńóśźż"
+NAME_WORD = rf"(?:[{UPPER}][{LOWER}]+(?:-[{UPPER}][{LOWER}]+)?|[{UPPER}]{{2,}}(?:-[{UPPER}]{{2,}})?)"
 
 
 def fold_diacritics(text: str) -> str:
@@ -53,7 +58,7 @@ def normalize_person_name(raw: Any) -> str | None:
     name = re.split(r"\s+[–-]\s+|,", text)[0].split()
     while name and name[0].rstrip(".").casefold() in NAME_PREFIXES:
         name = name[1:]
-    if not name:
+    if len(name) < 2:  # a first name and a surname at least
         return None
     joined = " ".join(name)
     return joined.title() if joined.isupper() else joined
@@ -177,21 +182,22 @@ class ValueType:
     python_type: type
     normalize: Callable[[Any], Any]
     written: bool = True  # False: interpreted (codes, flags, dictionary texts), never verbatim in documents
+    pattern: str | None = None  # finds candidate values in text; None = free text, read up to the line end
 
 
 VALUE_TYPES: dict[str, ValueType] = {
     "text": ValueType(str, normalize_text),
-    "person_name": ValueType(str, normalize_person_name),
-    "email": ValueType(str, normalize_email),
-    "nip": ValueType(str, normalize_nip),
-    "regon": ValueType(str, normalize_regon),
-    "krs": ValueType(str, normalize_krs),
-    "pesel": ValueType(str, normalize_pesel),
-    "account": ValueType(str, normalize_account),
-    "amount": ValueType(float, normalize_amount),
-    "date": ValueType(str, normalize_date),
-    "ted": ValueType(str, normalize_ted),
-    "bzp": ValueType(str, normalize_bzp),
+    "person_name": ValueType(str, normalize_person_name, pattern=rf"(?<![\w-]){NAME_WORD}[ \t]+{NAME_WORD}(?!\w|-\w)"),
+    "email": ValueType(str, normalize_email, pattern=EMAIL.pattern),
+    "nip": ValueType(str, normalize_nip, pattern=r"(?<!\d)(?:PL\s?)?\d{3}[- ]?\d{2,3}[- ]?\d{2,3}[- ]?\d{2,3}(?!\d)"),
+    "regon": ValueType(str, normalize_regon, pattern=r"(?<!\d)\d{9}(?:\d{5})?(?!\d)"),
+    "krs": ValueType(str, normalize_krs, pattern=r"(?<!\d)\d{1,10}(?!\d)"),
+    "pesel": ValueType(str, normalize_pesel, pattern=r"(?<!\d)\d{11}(?!\d)"),
+    "account": ValueType(str, normalize_account, pattern=r"(?<![\dA-Z])(?:PL)?\s?\d{2}(?:\s?\d{4}){6}(?!\d)"),
+    "amount": ValueType(float, normalize_amount, pattern=r"(?<![\d,.])-?\d{1,3}(?:[ \u00a0.]?\d{3})*(?:,\d{2}(?!\d)|(?=\s*(?:PLN|zł|zl)\b))|(?<![\d,.])\d+\.\d{2}(?=\s*(?:PLN|zł|zl)\b)"),
+    "date": ValueType(str, normalize_date, pattern=r"(?<!\d)(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\s*[./-]\s*\d{1,2}\s*[./-]\s*\d{4}|\d{1,2}\s*[" + LOWER + r"]+\s+\d{4})"),
+    "ted": ValueType(str, normalize_ted, pattern=rf"{TED_S_FORM.pattern}|{TED_NUMBER.pattern}"),
+    "bzp": ValueType(str, normalize_bzp, pattern=r"\d{4}\s*/\s*BZP\s*\d{8}(?:\s*/\s*\d{2})?"),
     "flag": ValueType(int, normalize_flag, written=False),
     "reason_id": ValueType(int, normalize_reason_id, written=False),
     "reason_description": ValueType(str, normalize_text, written=False),
