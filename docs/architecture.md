@@ -43,7 +43,7 @@ Błąd pojedynczego pliku (uszkodzony PDF, błąd API) → log z nazwą pliku, z
 | 1 | `src/text_extraction/` | Docling, lokalne modele, OCR, cache konwersji |
 | 2 | `src/classification/` | punktacja typów wg słów kluczowych z configu, fallback LLM |
 | 3–5 | `src/extraction/` | reguły, typy wartości Pydantic, budowa modelu z configu, wywołanie LLM |
-| ewaluacja | `src/evaluation/` | porównanie z referencją, F1 (`Evaluator` liczy przyrostowo) |
+| ewaluacja | `src/evaluation/` | porównanie z referencją, F1, wartości obecne w tekście, czasy konwersji (`Evaluator` liczy przyrostowo) |
 | eksperymenty | `src/experiments/` | `Experiment` (klasa pipeline'u + config), `ExperimentRunner`, artefakty przebiegu, historia raportów i ranking |
 | LLM | `src/inference/` | `LlmClient`: API zgodne z OpenAI (PSNC, Bielik-11B), odpowiedzi JSON wg schematu Pydantic, cache odpowiedzi, liczniki tokenów |
 | wspólne | `src/cache.py`, `src/doc_types.py`, `src/workspace.py` | cache dyskowy, wczytywanie `config/doc_types/*`, ścieżki |
@@ -174,7 +174,9 @@ flowchart LR
 - Cały zbiór treningowy, bez podziału na dev/holdout (brak uczenia; holdout z tego samego generatora nie mówi nic o realnych danych).
 - F1 na polach: JSON spłaszczony do liści `ścieżka → wartość`; trafienie = TP, zła wartość = FP + FN, brak = FN, null po obu stronach pomijany; elementy list dopasowywane po największej zgodności.
 - Dwie liczby: **strict** (dokładna równość) i **znormalizowana** – różnica to straty na formatowaniu.
-- Ryzyko realnych danych sprawdzamy osobno: wariant „skan” (PDF-y treningowe zrasteryzowane, wymuszony OCR) oraz ręcznie opisane realne dokumenty.
+- **Wartości w tekście** („in text”, `coverage`): udział wartości referencyjnych obecnych w wyciągniętym tekście, w typowych zapisach (daty `24.09.2026`/`24 września 2026`, kwoty `15 000,00`, identyfikatory jako ciąg cyfr, TED także jako `2026/S 245-999449`). To sufit ekstrakcji z tego tekstu i kontrola konwersji – rozbite komórki tabel i błędy OCR widać przed napisaniem reguł. Typ wartości pola bierzemy z `schema.json`; pola interpretowane (`reason_id`, `reason_description`, `flag`, `party_type`) pomijamy.
+- **Czas zimnego przebiegu**: czas konwersji każdego PDF-a jest zapisywany w cache razem z konwersją, więc raport pokazuje średni i maksymalny czas na dokument w każdym zbiorze również przy ciepłym cache.
+- Ryzyko realnych danych sprawdzamy osobno: zbiór `scans` organizatora (ścieżka OCR), opcjonalnie ręcznie opisane realne dokumenty.
 
 ## 9. Dodanie nowego typu dokumentu
 

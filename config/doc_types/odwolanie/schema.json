@@ -3,7 +3,7 @@
     "data": "date",
     "czynnosc_dzien": "date",
     "czynnosc_powod_id": "reason_id",
-    "czynnosc_opis": "text",
+    "czynnosc_opis": "reason_description",
     "miejscowosc": "text"
   },
   "Odwolujacy": [

@@ -57,12 +57,13 @@ class TextBlock:
 
 @dataclass(frozen=True, slots=True)
 class ExtractedDocument:
-    """Text blocks of one PDF in reading order, plus conversion status."""
+    """Text blocks of one PDF in reading order, plus conversion status and cost."""
 
     source: Path
     blocks: tuple[TextBlock, ...]
     page_count: int
     status: Literal["success", "partial_success", "failure"]
+    conversion_s: float  # Docling's wall time for this PDF, measured when converted (also when cached since)
     errors: tuple[str, ...] = ()
 
     @property

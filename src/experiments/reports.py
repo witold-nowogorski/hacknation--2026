@@ -91,13 +91,17 @@ class ReportStore:
 
 
 def format_leaderboard(reports: Sequence[EvalReport], current: EvalReport) -> str:
-    """Ranking of runs on the current run's document set, best strict F1 first."""
+    """Ranking of runs on the current run's document set, best strict F1 first.
+
+    "in text" is the share of reference values present in the extracted text, "conv s" the mean
+    cold conversion time per document.
+    """
     comparable = [report for report in reports if report.run.dataset_id == current.run.dataset_id]
     ranked = sorted(comparable, key=lambda r: (-r.scores.strict.f1, -r.scores.classification.accuracy))
     doc_types = [label for label in current.scores.by_doc_type if label != NO_TYPE]
 
     header = f"  {'#':>3}  {'experiment':24s} {'F1':>6} {'F1 norm':>7} " + " ".join(
-        f"{label[:12]:>12}" for label in doc_types) + f" {'class.':>6}  started"
+        f"{label[:12]:>12}" for label in doc_types) + f" {'class.':>6} {'in text':>7} {'conv s':>6}  started"
     lines = [f"Leaderboard ({current.run.documents} documents, dataset {current.run.dataset_id}, strict F1):", header]
     for rank, report in enumerate(ranked, start=1):
         if rank <= LEADERBOARD_SIZE or report.run.run_id == current.run.run_id:
@@ -116,6 +120,9 @@ def _leaderboard_row(rank: int, report: EvalReport, doc_types: list[str], is_cur
     per_type = " ".join(
         f"{scores.by_doc_type[label].f1:12.3f}" if label in scores.by_doc_type else f"{'-':>12}" for label in doc_types
     )
+    in_text = f"{scores.coverage.share:7.3f}" if scores.coverage else f"{'-':>7}"
+    conversion = f"{scores.conversion_s:6.2f}" if scores.conversion_s is not None else f"{'-':>6}"
     marker = "  ← this run" if is_current else ""
     return (f"  {rank:>3}  {report.run.experiment[:24]:24s} {scores.strict.f1:6.3f} {scores.normalised.f1:7.3f} "
-            f"{per_type} {scores.classification.accuracy:6.3f}  {report.run.started_at:%Y-%m-%d %H:%M}{marker}")
+            f"{per_type} {scores.classification.accuracy:6.3f} {in_text} {conversion}  "
+            f"{report.run.started_at:%Y-%m-%d %H:%M}{marker}")

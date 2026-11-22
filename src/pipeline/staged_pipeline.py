@@ -48,7 +48,7 @@ class StagedPipeline(Pipeline):
         classification = self._classifier.classify(extracted)
         logger.debug("%s -> %s, scores %s", document.label, classification.doc_type, classification.scores)
         if classification.doc_type is None:
-            return DocumentResult.empty(document)
+            return DocumentResult(document=document, doc_type=None, data={}, extracted=extracted)
 
         data = self._field_extractor.extract(extracted, self._doc_types[classification.doc_type])
-        return DocumentResult(document=document, doc_type=classification.doc_type, data=data)
+        return DocumentResult(document=document, doc_type=classification.doc_type, data=data, extracted=extracted)

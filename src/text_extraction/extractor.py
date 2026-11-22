@@ -8,6 +8,7 @@ text layer. Full-page OCR and the VLM pipeline were slower and less accurate.
 
 import logging
 from pathlib import Path
+from time import perf_counter
 from typing import Literal
 
 from docling.datamodel.accelerator_options import AcceleratorOptions
@@ -31,7 +32,7 @@ _STATUS_NAMES = {
 
 
 def build_converter(settings: ConversionSettings) -> DocumentConverter:
-    """Create a CPU-only converter; build once and reuse (model loading is slow)."""
+    """Create a CPU-only converter with its models loaded; build once and reuse (loading is slow)."""
     options = PdfPipelineOptions(
         do_ocr=True,
         # Engine set explicitly: the "auto" default picks different engines per OS.
@@ -41,7 +42,9 @@ def build_converter(settings: ConversionSettings) -> DocumentConverter:
         accelerator_options=AcceleratorOptions(num_threads=settings.num_threads, device="cpu"),
     )
     options.table_structure_options.mode = TableFormerMode(settings.table_mode)
-    return DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)})
+    converter = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)})
+    converter.initialize_pipeline(InputFormat.PDF)  # load now, not inside the first document's conversion time
+    return converter
 
 
 class Conversion(BaseModel):
@@ -50,6 +53,7 @@ class Conversion(BaseModel):
 
     status: Literal["success", "partial_success", "failure"]
     page_count: int
+    seconds: float  # wall time of the conversion; cached with it, so reports always show the cold-run cost
     errors: tuple[str, ...] = ()
     document: DoclingDocument | None = None
 
@@ -60,7 +64,9 @@ class Conversion(BaseModel):
 
 def convert(converter: DocumentConverter, pdf_path: Path, max_pages: int) -> Conversion:
     """Convert the first max_pages pages of a PDF; unreadable files yield status "failure"."""
+    start = perf_counter()
     result = converter.convert(pdf_path, raises_on_error=False, page_range=(1, max_pages))
+    seconds = perf_counter() - start
     errors = tuple(error.error_message for error in result.errors)
     if errors:
         logger.warning("Docling reported errors for %s: %s", pdf_path, errors)
@@ -68,6 +74,7 @@ def convert(converter: DocumentConverter, pdf_path: Path, max_pages: int) -> Con
     return Conversion(
         status=status,
         page_count=result.input.page_count or 0,
+        seconds=round(seconds, 3),
         errors=errors,
         document=result.document if status != "failure" else None,
     )
@@ -86,6 +93,7 @@ def to_extracted_document(pdf_path: Path, conversion: Conversion) -> ExtractedDo
         blocks=tuple(sort_reading_order(blocks)),
         page_count=conversion.page_count,
         status=conversion.status,
+        conversion_s=conversion.seconds,
         errors=conversion.errors,
     )
 

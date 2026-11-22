@@ -7,7 +7,6 @@ from time import perf_counter
 
 from src.doc_types import DocTypeConfig, load_doc_types
 from src.evaluation.evaluator import NO_TYPE, DocumentEvaluation, Evaluator, format_scores
-from src.evaluation.references import ReferenceLoader
 from src.experiments.eval_sets import EvalSet, select_documents
 from src.experiments.experiment import Experiment
 from src.experiments.reports import EvalReport, ReportStore, RunInfo, dataset_id, format_leaderboard, git_revision
@@ -43,7 +42,7 @@ class ExperimentRunner:
                         ", ".join(eval_set.name for eval_set in self._eval_sets), run_directory.path)
             doc_types = load_doc_types(self._workspace.doc_types_dir)
             pipeline = experiment.build_pipeline(self._workspace)
-            evaluator = Evaluator(ReferenceLoader(doc_types).load)
+            evaluator = Evaluator(doc_types)
             start = perf_counter()
             for index, (result, selected_document) in enumerate(zip(pipeline.run(documents), selected), start=1):
                 evaluation = evaluator.add(result, selected_document.eval_set)
@@ -94,7 +93,9 @@ def _log_progress(index: int, total: int, result: DocumentResult, evaluation: Do
     verdict = "ok" if evaluation.type_correct else f"WRONG (expected {evaluation.expected_type or NO_TYPE})"
     counts = evaluation.strict
     document_f1 = f"{counts.f1:.2f}" if counts.tp + counts.fp + counts.fn else "-"
+    coverage = evaluation.coverage
+    in_text = f"{coverage.present}/{coverage.total}" if coverage.total else "-"
     running = evaluator.running
     level = logging.INFO if evaluation.type_correct else logging.WARNING
-    logger.log(level, "%s %-15s %-5s F1 %4s %6.2f s | running F1 %.3f, class. %.3f", position, predicted, verdict,
-               document_f1, result.elapsed_s, running.f1, evaluator.classification_accuracy)
+    logger.log(level, "%s %-15s %-5s F1 %4s  in text %5s %6.2f s | running F1 %.3f, class. %.3f", position,
+               predicted, verdict, document_f1, in_text, result.elapsed_s, running.f1, evaluator.classification_accuracy)

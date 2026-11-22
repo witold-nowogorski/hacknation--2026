@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Self
 
+from src.text_extraction.models import ExtractedDocument
+
 
 @dataclass(frozen=True, slots=True)
 class InputDocument:
@@ -26,6 +28,7 @@ class DocumentResult:
     document: InputDocument
     doc_type: str | None
     data: dict[str, Any]
+    extracted: ExtractedDocument | None = None  # the text the result came from; None if there was none
     elapsed_s: float = 0.0
     error: str | None = None  # set when processing failed and `{}` was written instead
 
