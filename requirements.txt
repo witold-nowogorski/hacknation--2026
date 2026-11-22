@@ -21,3 +21,5 @@ python-multipart>=0.0.34
 # Web UI, a client of the API (python -m streamlit run src/web_app.py) - Apache 2.0
 streamlit>=1.67
 httpx>=0.28
+# Walkthrough notebook for the jury (python -m notebook walkthrough.ipynb) - BSD
+notebook>=7.6
