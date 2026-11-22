@@ -4,7 +4,7 @@ Our system turns **each PDF from an appeal case into JSON in the UZP format**. B
 
 ## 1. Reading text from the PDF
 
-In the first step, the document is processed with the open-source **Docling** library. We chose it because **a single tool reads text, tables, page layout and reading order**, so we don't have to combine several libraries.
+In the first step, the document is processed with the open-source [**Docling**](https://github.com/docling-project/docling) library. We chose it because **a single tool reads text, tables, page layout and reading order**, so we don't have to combine several libraries.
 
 When a page is a scan without a text layer, a **local OCR engine (RapidOCR) for Polish** is used. It runs on the user's machine, because OCR through an external API would count as additional model usage.
 
