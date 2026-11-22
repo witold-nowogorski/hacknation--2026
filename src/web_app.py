@@ -85,7 +85,6 @@ def show_document(index: int, document: dict[str, Any], expanded: bool) -> None:
 def main() -> None:
     st.set_page_config(page_title="Odwołania2json", page_icon="📄", layout="wide")
     st.title("Odwołania2json")
-    st.write("Odwołanie, pełnomocnictwo lub potwierdzenie przelewu (PDF) → JSON. Inne dokumenty dają `{}`.")
     try:
         experiments = call_api("GET", "/experiments")
     except ApiUnavailable as error:
