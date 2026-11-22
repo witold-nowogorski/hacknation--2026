@@ -1,0 +1,7 @@
+# Web UI settings (python -m streamlit run src/web_app.py): local only, no usage statistics sent out.
+[server]
+address = "localhost"
+headless = true
+
+[browser]
+gatherUsageStats = false

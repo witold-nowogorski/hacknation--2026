@@ -14,3 +14,10 @@ pandas>=3.1
 pytest>=9.2
 # LLM client for OpenAI-compatible endpoints (EU-hosted, open-weight models)
 openai>=3.57
+# HTTP API with Swagger UI (python -m uvicorn src.api:app) - MIT / BSD / Apache 2.0
+fastapi>=0.165
+uvicorn>=0.54
+python-multipart>=0.0.34
+# Web UI, a client of the API (python -m streamlit run src/web_app.py) - Apache 2.0
+streamlit>=1.67
+httpx>=0.28

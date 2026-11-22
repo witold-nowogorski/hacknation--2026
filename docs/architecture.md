@@ -11,6 +11,16 @@ Docelowa architektura rozwiązania. Wiedza o typach dokumentów jest w `config/`
 
 Zasada: **reguły najpierw, LLM tylko tam, gdzie potrzebna ocena lub reguły zawiodły.**
 
+## Uruchomienie
+
+```bash
+python -m src.run                                   # wsadowo: input -> output (MODE, eksperymenty w src/run.py)
+python -m uvicorn src.api:app --port 8000           # API; Swagger: http://localhost:8000/docs
+python -m streamlit run src/web_app.py              # UI (http://localhost:8501), wymaga działającego API
+```
+
+API i UI używają tych samych eksperymentów co `src/run.py` (domyślnie `RUN_EXPERIMENT`); przesłane pliki są przetwarzane w katalogu tymczasowym, nic nie trafia do folderu wyjściowego. API przetwarza dokumenty po jednym (blokada – konwerter i klient LLM nie są wielowątkowe); modele ładują się raz, przy pierwszym żądaniu. UI działa lokalnie (`.streamlit/config.toml`: tylko localhost, bez wysyłania statystyk).
+
 ## 2. Przepływ dokumentu
 
 ```mermaid
@@ -39,6 +49,8 @@ Błąd pojedynczego pliku (uszkodzony PDF, błąd API) → log z nazwą pliku, z
 | Krok | Moduł | Odpowiedzialność |
 |---|---|---|
 | start | `src/run.py` | ustawienia (`MODE`, `Workspace` ze ścieżkami), lista eksperymentów, logowanie |
+| API | `src/api.py` | FastAPI: `POST /documents` (PDF-y → JSON + pochodzenie wartości), `GET /experiments`, `GET /health`; Swagger pod `/docs` |
+| UI | `src/web_app.py` | Streamlit, klient API: upload PDF-ów, podgląd JSON i pochodzenia, pobieranie JSON/ZIP |
 | pętla | `src/pipeline/` | `Pipeline` (ABC: `from_config`, `process`; `run` mierzy czas i obsługuje błędy), `PipelineConfig`, `InputDocument`/`DocumentResult` |
 | 1 | `src/text_extraction/` | Docling, lokalne modele, OCR, cache konwersji |
 | 2 | `src/classification/` | punktacja typów wg słów kluczowych z configu, fallback LLM |

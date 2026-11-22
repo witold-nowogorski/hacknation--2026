@@ -58,8 +58,13 @@ def write_result(result: DocumentResult, output_dir: Path) -> Path:
 
 def write_trace(result: DocumentResult, traces_dir: Path) -> Path:
     """Write `<traces_dir>/<case>/<pdf stem>.json`: how the document was read, classified and extracted."""
+    return _write_json(trace_of(result), traces_dir / result.document.case / f"{result.document.path.stem}.json")
+
+
+def trace_of(result: DocumentResult) -> dict[str, Any]:
+    """Conversion, classification scores and the source of every value of one result."""
     extracted = result.extracted
-    trace = {
+    return {
         "document": result.document.label,
         "conversion": {"status": extracted.status, "pages": extracted.page_count,
                        "seconds": extracted.conversion_s} if extracted else None,
@@ -68,7 +73,6 @@ def write_trace(result: DocumentResult, traces_dir: Path) -> Path:
         "error": result.error,
         "values": [asdict(source) for source in result.sources],
     }
-    return _write_json(trace, traces_dir / result.document.case / f"{result.document.path.stem}.json")
 
 
 def _write_json(content: Any, target: Path) -> Path:
