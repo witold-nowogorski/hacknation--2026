@@ -35,9 +35,14 @@ class DocumentResult:
         return cls(document=document, doc_type=None, data={}, error=error)
 
 
-def find_documents(input_dir: Path) -> list[InputDocument]:
-    """All `<input_dir>/<case>/*.pdf` files, sorted for deterministic runs."""
-    return [InputDocument(case=path.parent.name, path=path) for path in sorted(input_dir.glob("*/*.pdf"))]
+def find_documents(root: Path, pattern: str = "*/*.pdf") -> list[InputDocument]:
+    """PDFs matching `pattern` under `root`, sorted for deterministic runs.
+
+    The case is the PDF's folder relative to `root` (`<case>` for `<input>/<case>/*.pdf`,
+    `odwolania/0001` for nested layouts), so cases stay unique and outputs mirror the input tree.
+    """
+    return [InputDocument(case=path.parent.relative_to(root).as_posix(), path=path)
+            for path in sorted(root.glob(pattern))]
 
 
 def write_result(result: DocumentResult, output_dir: Path) -> Path:

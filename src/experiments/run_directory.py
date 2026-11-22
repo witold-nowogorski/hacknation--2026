@@ -59,10 +59,11 @@ class RunDirectory:
             root_logger.removeHandler(handler)
             handler.close()
 
-    def record(self, result: DocumentResult, evaluation: DocumentEvaluation) -> None:
+    def record(self, result: DocumentResult, evaluation: DocumentEvaluation, eval_set: str) -> None:
         """Save the document's output JSON and append its records."""
         write_result(result, self.path / "output")
         self._append("documents.jsonl", [{
+            "eval_set": eval_set,
             "document": result.document.label,
             "expected_type": evaluation.expected_type,
             "predicted_type": result.doc_type,

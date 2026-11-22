@@ -1,0 +1,24 @@
+{
+  "mocodawca": [
+    {
+      "data": {
+        "imie_nazwisko": "person_name",
+        "krs": "krs",
+        "nazwa": "text",
+        "nip": "nip",
+        "typ": "party_type"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "person_name"
+        }
+      ]
+    }
+  ],
+  "pelnomocnicy": [
+    {
+      "imie_nazwisko": "person_name",
+      "pesel": "pesel"
+    }
+  ]
+}

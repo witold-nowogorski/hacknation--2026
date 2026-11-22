@@ -2,7 +2,7 @@
 
 Run from the repo root:  python -m src.run
   MODE = "run"   process WORKSPACE.input_dir into WORKSPACE.output_dir with RUN_EXPERIMENT
-  MODE = "eval"  evaluate EVAL_EXPERIMENTS on the training set; reports go to eval/reports/,
+  MODE = "eval"  evaluate EVAL_EXPERIMENTS on EVAL_SETS; reports go to eval/reports/,
                  full artifacts of each run to traces/runs/<run id>/
 """
 
@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Literal
 
 from src.classification.keyword_classifier import KeywordClassifierSettings
+from src.experiments.eval_sets import EvalSet
 from src.experiments.experiment import Experiment, select_experiments
 from src.experiments.runner import ExperimentRunner
 from src.inference.llm_client import LlmSettings
@@ -28,6 +29,11 @@ MODE: Literal["run", "eval"] = "run"
 RUN_EXPERIMENT = "keywords-2pages"  # pipeline used in MODE = "run"
 EVAL_EXPERIMENTS = ["keywords-2pages"]  # evaluated in this order in MODE = "eval"
 EVAL_CASES: list[str] | None = None  # e.g. ["przyklad_01", "negatywne"] for a quick run; None = all
+EVAL_SETS = [  # references sit next to the PDFs; a PDF without one must produce {}
+    EvalSet("synthetic", ROOT / "dane", "przyklad_*/*.pdf"),  # text-layer cases, some with negatives inside
+    EvalSet("negatives", ROOT / "dane", "negatywne/*.pdf"),
+    EvalSet("scans", ROOT / "dane" / "skany", "*/*/*.pdf"),  # scanned documents: OCR path
+]
 LOG_LEVEL = logging.INFO
 ENV_FILE = ROOT / ".env"  # secrets such as LLM_API_KEY; git-ignored
 
@@ -35,7 +41,6 @@ WORKSPACE = Workspace(
     root=ROOT,
     input_dir=ROOT / "dane" / "input",
     output_dir=ROOT / "dane" / "output",
-    eval_data_dir=ROOT / "dane",
     doc_types_dir=ROOT / "config" / "doc_types",
     models_dir=ROOT / "models",
     cache_dir=ROOT / ".cache",
@@ -106,7 +111,7 @@ def main() -> None:
             [experiment] = select_experiments(EXPERIMENTS, [RUN_EXPERIMENT])
             process_input(experiment, WORKSPACE)
         case "eval":
-            ExperimentRunner(WORKSPACE, EVAL_CASES).run_all(select_experiments(EXPERIMENTS, EVAL_EXPERIMENTS))
+            ExperimentRunner(WORKSPACE, EVAL_SETS, EVAL_CASES).run_all(select_experiments(EXPERIMENTS, EVAL_EXPERIMENTS))
         case _:
             raise SystemExit(f"Unknown MODE: {MODE!r}")
 

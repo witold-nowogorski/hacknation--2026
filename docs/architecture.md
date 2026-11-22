@@ -68,6 +68,7 @@ Przepływ danych jest jednokierunkowy; etapy wymieniają się typowanymi obiekta
 ```
 config/doc_types/<typ>/
   doc_type.toml    # klasyfikacja (słowa kluczowe z wagami); później pola (etykiety, typ wartości, metoda)
+  schema.json      # kształt wyjściowego JSON-a 1:1 z oczekiwanym formatem; liście = nazwy typów wartości
   prompt.md        # instrukcja dla LLM (tylko jeśli typ ma pola LLM)
 ```
 
@@ -159,14 +160,16 @@ Maksymalnie jedno wywołanie LLM na dokument. Klient: `LlmClient` (SDK `openai` 
 
 ```mermaid
 flowchart LR
-    D["dane/przyklad_*/*.pdf<br/>dane/negatywne/*.pdf"] --> P["Pipeline.run()<br/>(MODE = eval)"]
-    P --> CMP["Evaluator.add() – dokument po dokumencie<br/>referencja #lt;sprawa#gt;/#lt;nazwa#gt;.json<br/>(potwierdzenie_przelewu → przelew.json,<br/>negatywne → {})"]
+    D["zbiory ewaluacyjne (EVAL_SETS):<br/>synthetic: dane/przyklad_*/*.pdf<br/>negatives: dane/negatywne/*.pdf<br/>scans: dane/skany/*/*/*.pdf"] --> P["Pipeline.run()<br/>(MODE = eval)"]
+    P --> CMP["Evaluator.add() – dokument po dokumencie<br/>referencja: #lt;nazwa#gt;.json obok PDF-a<br/>(potwierdzenie_przelewu → przelew.json);<br/>brak referencji → negatyw {}<br/>typ z kluczy JSON-a (schema.json)"]
     CMP --> LOG["log: postęp, bieżące F1,<br/>pomyłki klasyfikacji"]
     CMP --> RUN["traces/runs/#lt;run id#gt;/<br/>output/, documents.jsonl,<br/>errors.jsonl, run.log, report.json"]
     CMP --> REP["eval/reports/#lt;run id#gt;.json<br/>run info + config + wyniki<br/>→ ranking przebiegów"]
 ```
 
 - Eksperyment = klasa pipeline'u + `PipelineConfig`; lista w `src/run.py`, wybór przez `EVAL_EXPERIMENTS`, szybki podzbiór przez `EVAL_CASES`.
+- Zbiory ewaluacyjne (`EVAL_SETS`): `synthetic` (przykłady z warstwą tekstową, w tym negatywy wewnątrz spraw), `negatives`, `scans` (skany – ścieżka OCR). Wyniki raportowane osobno dla każdego zbioru (`by_subset`), żeby słabość jednego rodzaju wejścia nie ginęła w średniej.
+- Referencja to `<nazwa>.json` obok PDF-a; PDF bez referencji to negatyw (organizator umieszcza je też wewnątrz spraw). Oczekiwany typ rozpoznajemy po kluczach najwyższego poziomu (zgodnie z `schema.json`), nie po nazwie pliku – README: nazwy plików mogą być dowolne.
 - Raport (commitowany) zawiera commit gita, czas na dokument, pełny config, snapshot `config/doc_types/*` i wyniki; ranking porównuje tylko przebiegi na tym samym zbiorze dokumentów (`dataset_id`).
 - Cały zbiór treningowy, bez podziału na dev/holdout (brak uczenia; holdout z tego samego generatora nie mówi nic o realnych danych).
 - F1 na polach: JSON spłaszczony do liści `ścieżka → wartość`; trafienie = TP, zła wartość = FP + FN, brak = FN, null po obu stronach pomijany; elementy list dopasowywane po największej zgodności.
@@ -184,6 +187,8 @@ Kod się nie zmienia, chyba że potrzebny jest nowy rodzaj wartości (np. nowy f
 ## 10. Otwarte kwestie
 
 - Negatywne dokumenty: README mówi „pusty plik .json”, przykładowe wyjście organizatora ma 0 bajtów; przyjmujemy `{}` – do potwierdzenia.
-- `czynnosc_powod_id` = 12 nie występuje w danych treningowych – opis trzeba ustalić ze specyfikacji.
+- Słownik `czynnosc_powod_id` (1–12) jest w `dane/oczekiwane-json/czynnosc_powod_id_dict.md`; 12 = „Projektowane postanowienia umowy” nie występuje w danych treningowych.
+- `z_rachunku`/`na_rachunek`: w referencjach treningowych bez prefiksu `PL`, w skanach `z_rachunku` z prefiksem – wybór konwencji przez pomiar F1 na wszystkich zbiorach.
+- Organizator zapowiada zmianę sposobu oceny (README, „stay tuned”) – limit czasu: 150 PDF-ów w 45 minut.
 - `pesel`: w szablonie liczba, w referencjach tekst.
 - Dokładny sposób liczenia F1 przez organizatora nie jest opublikowany.
