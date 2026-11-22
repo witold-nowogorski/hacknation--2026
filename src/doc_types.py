@@ -14,6 +14,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
+from src.value_types import VALUE_TYPES
+
 CONFIG_FILE = "doc_type.toml"
 SCHEMA_FILE = "schema.json"
 
@@ -53,17 +55,18 @@ class DocTypeConfig(BaseModel):
 
 
 def _check_template(template: Any, path: str) -> None:
-    """Objects are non-empty, lists hold exactly one element template, leaves are value-type names."""
+    """Objects are non-empty, lists hold exactly one element template, leaves name value types (src/value_types.py)."""
     match template:
         case dict() if template:
             for key, value in template.items():
                 _check_template(value, f"{path}.{key}" if path else key)
         case [element]:
             _check_template(element, f"{path}[]")
-        case str():
+        case str() if template in VALUE_TYPES:
             return
         case _:
-            raise ValueError(f"{path or 'root'}: expected a non-empty object, a one-element list or a value-type name")
+            raise ValueError(f"{path or 'root'}: expected a non-empty object, a one-element list or one of the "
+                             f"value types {sorted(VALUE_TYPES)}, got {template!r}")
 
 
 def load_doc_types(directory: Path) -> dict[str, DocTypeConfig]:

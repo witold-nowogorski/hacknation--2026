@@ -11,12 +11,10 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from typing import Any, Self
 
-# Value types that are interpreted rather than written (codes, flags, dictionary texts).
-DERIVED_TYPES = frozenset({"reason_id", "reason_description", "flag", "party_type"})
+from src.value_types import MONTHS_GENITIVE, VALUE_TYPES
+
 # Identifiers written with varying separators ("PL 61 1090 ...", "NIP: 123-456-78-90"): compared as digits.
 DIGIT_TYPES = frozenset({"nip", "regon", "krs", "pesel", "account"})
-MONTHS_GENITIVE = ("stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca", "lipca", "sierpnia",
-                   "września", "października", "listopada", "grudnia")
 ISO_DATE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 TED_NUMBER = re.compile(r"(\d+)-(\d{4})")
 WHITESPACE = re.compile(r"\s+")
@@ -57,7 +55,7 @@ def check_values(data: dict[str, Any], schema: dict[str, Any], text: str) -> lis
     digits = NON_DIGITS.sub("", text)
     return [ValueCheck(path, _is_present(value, value_type, compact_text, digits))
             for path, value_type, value in _typed_leaves(data, schema, path="")
-            if value is not None and value_type not in DERIVED_TYPES]
+            if value is not None and VALUE_TYPES[value_type].written]
 
 
 def _typed_leaves(data: Any, template: Any, path: str) -> Iterator[tuple[str, str, Any]]:

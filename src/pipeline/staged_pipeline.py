@@ -8,7 +8,7 @@ from src.cache import DiskCache
 from src.classification.classifier import Classifier
 from src.classification.keyword_classifier import KeywordClassifier
 from src.doc_types import DocTypeConfig, load_doc_types
-from src.extraction.field_extractor import EmptyFieldExtractor, FieldExtractor
+from src.extraction.field_extractor import FieldExtractor, SkeletonExtractor
 from src.pipeline.config import PipelineConfig
 from src.pipeline.documents import DocumentResult, InputDocument
 from src.pipeline.pipeline import DocumentProcessingError, Pipeline
@@ -35,7 +35,7 @@ class StagedPipeline(Pipeline):
             text_extractor=DoclingTextExtractor(
                 config.conversion, workspace.models_dir, DiskCache(workspace.cache_dir / "docling")),
             classifier=KeywordClassifier(doc_types, config.classification),
-            field_extractor=EmptyFieldExtractor(),
+            field_extractor=SkeletonExtractor(doc_types),
             doc_types=doc_types,
         )
 

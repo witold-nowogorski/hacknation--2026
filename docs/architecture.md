@@ -42,11 +42,11 @@ Błąd pojedynczego pliku (uszkodzony PDF, błąd API) → log z nazwą pliku, z
 | pętla | `src/pipeline/` | `Pipeline` (ABC: `from_config`, `process`; `run` mierzy czas i obsługuje błędy), `PipelineConfig`, `InputDocument`/`DocumentResult` |
 | 1 | `src/text_extraction/` | Docling, lokalne modele, OCR, cache konwersji |
 | 2 | `src/classification/` | punktacja typów wg słów kluczowych z configu, fallback LLM |
-| 3–5 | `src/extraction/` | reguły, typy wartości Pydantic, budowa modelu z configu, wywołanie LLM |
+| 3–5 | `src/extraction/` | model wyjścia z `schema.json` (`output_model.py`), `SkeletonExtractor` (pełna struktura z null); dalej reguły i LLM |
 | ewaluacja | `src/evaluation/` | porównanie z referencją, F1, wartości obecne w tekście, czasy konwersji (`Evaluator` liczy przyrostowo) |
 | eksperymenty | `src/experiments/` | `Experiment` (klasa pipeline'u + config), `ExperimentRunner`, artefakty przebiegu, historia raportów i ranking |
 | LLM | `src/inference/` | `LlmClient`: API zgodne z OpenAI (PSNC, Bielik-11B), odpowiedzi JSON wg schematu Pydantic, cache odpowiedzi, liczniki tokenów |
-| wspólne | `src/cache.py`, `src/doc_types.py`, `src/workspace.py` | cache dyskowy, wczytywanie `config/doc_types/*`, ścieżki |
+| wspólne | `src/cache.py`, `src/doc_types.py`, `src/value_types.py`, `src/workspace.py` | cache dyskowy, wczytywanie `config/doc_types/*`, typy wartości z normalizatorami, ścieżki |
 
 ```mermaid
 flowchart LR
@@ -94,27 +94,33 @@ Pola oznaczone `method: llm` (np. `czynnosc_powod_id`) trafiają do LLM zawsze; 
 
 ## 5. Model danych (Pydantic)
 
-Jedno miejsce na każdą regułę normalizacji – typy wartości zdefiniowane raz w kodzie:
+Jedno miejsce na każdą regułę normalizacji: typy wartości w `src/value_types.py` (`VALUE_TYPES`). Każdy ma typ Pythona, normalizator i informację, czy dokumenty zapisują wartość wprost (kody, flagi i opisy ze słownika są interpretowane). Liście `schema.json` nazywają te typy; nieznana nazwa zatrzymuje wczytywanie configu.
 
-```python
-Nip     = Annotated[str | None,   BeforeValidator(normalize_nip)]      # "999-928-40-65" → "9999284065"
-IsoDate = Annotated[str | None,   BeforeValidator(normalize_date)]     # "20 marca 2026" → "2026-03-20"
-Account = Annotated[str | None,   BeforeValidator(normalize_account)]  # "PL05 4706…"    → "054706…"
-Amount  = Annotated[float | None, BeforeValidator(normalize_amount)]   # "200,00 PLN"    → 200.0
-```
+| Typ | Normalizacja (przykład) |
+|---|---|
+| `date` | „24 września 2026 r.”, `24.09.2026`, `24/09/2026` → `2026-09-24`; niepoprawna data → null |
+| `amount` | „15 000,00 zł”, `15.000,00` → `15000.0` |
+| `nip`, `regon`, `krs`, `pesel` | same cyfry o właściwej długości; KRS uzupełniany zerami do 10 cyfr |
+| `account` | same cyfry, bez prefiksu `PL` (konwencja 138 ze 140 referencji) |
+| `ted`, `bzp` | `2026/S 245-999449` → `999449-2026`; `2026/BZP 00999778/03` → `2026/BZP00999778/03` |
+| `person_name` | bez tytułów i funkcji („adw.”, „r. pr.”, „Prezes Zarządu”), WERSALIKI → „Jan Kowalski” |
+| `email`, `text` | e-mail małymi literami; tekst z pojedynczymi spacjami, bez cudzysłowów wokół |
+| `flag`, `reason_id`, `party_type`, `reason_description` | 0/1; 1–12; `osoba_prawna`/`osoba_fizyczna`; tekst |
 
 ```mermaid
 flowchart LR
-    Y["doc_type.toml<br/>pole → type"] --> CM["pydantic.create_model"]
-    R["rejestr typów<br/>nip, date, account, amount, …"] --> CM
+    Y["schema.json<br/>kształt + typ każdego liścia"] --> CM["pydantic.create_model<br/>(output_model.py)"]
+    R["VALUE_TYPES<br/>nip, date, account, amount, …"] --> CM
     CM --> DM["model dokumentu"]
-    DM --> U1["normalizacja wartości z reguł"]
+    DM --> U1["normalizacja wartości z reguł i LLM"]
     DM --> U2["JSON schema dla LLM<br/>+ walidacja odpowiedzi"]
     DM --> U3["kompletna struktura wyjścia<br/>(brak = null, aliasy np. przez-pelnomocnika)"]
 ```
 
+Rozpoznany dokument zawsze dostaje pełną strukturę (`SkeletonExtractor`: wszystkie wartości null, jeden element na listę, jak w szablonach organizatora); ekstraktory ją wypełniają. Sprawdzenie: wszystkie 2704 wartości z referencji przechodzą przez modele bez zmian, poza 2 numerami rachunków ze skanów zapisanymi z `PL`.
+
 Zasady:
-- Model budowany z configu (`create_model`), nie pisany ręcznie per typ – nowy typ nie wymaga kodu.
+- Model budowany z `schema.json` (`create_model`), nie pisany ręcznie per typ – nowy typ dokumentu nie wymaga kodu.
 - Wartości nieparsowalne → `None` + powód w trace; jedno złe pole nie odrzuca dokumentu.
 - Sumy kontrolne (NIP, REGON, PESEL) nie zerują pól – służą do wyboru między kandydatami. Dane syntetyczne mają ~40% NIP-ów z błędną sumą.
 - Pochodzenie wartości (reguła/LLM, strona, fragment) w osobnej strukturze, nie w modelu wyjściowym.
@@ -195,17 +201,17 @@ flowchart LR
 
 ## 10. Dodanie nowego typu dokumentu
 
-1. Utwórz `config/doc_types/<typ>/doc_type.toml`: słowa kluczowe klasyfikacji (później pola z etykietami i typami wartości, struktura JSON).
+1. Utwórz `config/doc_types/<typ>/doc_type.toml` (słowa kluczowe klasyfikacji; później reguły pól) i `schema.json` (struktura wyjścia, w liściach nazwy typów wartości z `src/value_types.py`).
 2. Opcjonalnie `prompt.md` i słowniki, jeśli typ ma pola oceniane przez LLM.
 3. Dodaj przykłady z referencjami do `dane/` i uruchom ewaluację.
 
-Kod się nie zmienia, chyba że potrzebny jest nowy rodzaj wartości (np. nowy format identyfikatora) – wtedy jeden normalizator w rejestrze typów.
+Kod się nie zmienia, chyba że potrzebny jest nowy rodzaj wartości (np. nowy format identyfikatora) – wtedy jeden normalizator w `VALUE_TYPES`.
 
 ## 11. Otwarte kwestie
 
 - Negatywne dokumenty: README mówi „pusty plik .json”, przykładowe wyjście organizatora ma 0 bajtów; przyjmujemy `{}` – do potwierdzenia.
 - Słownik `czynnosc_powod_id` (1–12) jest w `dane/oczekiwane-json/czynnosc_powod_id_dict.md`; 12 = „Projektowane postanowienia umowy” nie występuje w danych treningowych.
-- `z_rachunku`/`na_rachunek`: w referencjach treningowych bez prefiksu `PL`, w skanach `z_rachunku` z prefiksem – wybór konwencji przez pomiar F1 na wszystkich zbiorach.
+- `z_rachunku`/`na_rachunek`: referencje treningowe bez prefiksu `PL`, 2 z 10 skanów z prefiksem; normalizator idzie za większością (bez `PL`) – do zmiany, jeśli organizator wskaże inaczej.
 - Organizator zapowiada zmianę sposobu oceny (README, „stay tuned”) – limit czasu: 150 PDF-ów w 45 minut (projekcja w sekcji 7).
 - `pesel`: w szablonie liczba, w referencjach tekst.
 - Dokładny sposób liczenia F1 przez organizatora nie jest opublikowany.

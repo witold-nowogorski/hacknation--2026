@@ -8,10 +8,9 @@ from pydantic import BaseModel, ConfigDict
 from src.classification.classifier import Classification, Classifier
 from src.doc_types import ClassificationRules, DocTypeConfig
 from src.text_extraction.models import ExtractedDocument
+from src.value_types import fold_diacritics
 
 WHITESPACE = re.compile(r"\s+")
-# OCR often drops Polish diacritics ("ODWOLANIE", "Odwołujacy") or reads "i" as a dotless "ı".
-FOLD_DIACRITICS = str.maketrans("ąćęłńóśźżı", "acelnoszzi")
 
 
 class KeywordClassifierSettings(BaseModel):
@@ -54,4 +53,4 @@ def _score(text: str, head: str, rules: ClassificationRules) -> float:
 
 
 def _compact(text: str) -> str:
-    return WHITESPACE.sub("", text).casefold().translate(FOLD_DIACRITICS)
+    return fold_diacritics(WHITESPACE.sub("", text).casefold())
