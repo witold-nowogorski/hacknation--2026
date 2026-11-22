@@ -1,0 +1,555 @@
+{
+  "run": {
+    "run_id": "20261121-201319_keywords-2pages",
+    "experiment": "keywords-2pages",
+    "pipeline": "StagedPipeline",
+    "started_at": "2026-11-21T20:13:19.330110+01:00",
+    "duration_s": 0.41,
+    "documents": 226,
+    "seconds_per_document": 0.002,
+    "dataset_id": "00876d37b058",
+    "git_commit": "b402e70",
+    "git_dirty": true
+  },
+  "config": {
+    "name": "keywords-2pages",
+    "description": "keywords-v1, but keywords are searched on the first two pages (long appeal headers).",
+    "conversion": {
+      "max_pages": 4,
+      "document_timeout_s": 120.0,
+      "ocr_lang": [
+        "pl"
+      ],
+      "table_mode": "fast",
+      "num_threads": 4
+    },
+    "classification": {
+      "pages": 2
+    },
+    "llm": null
+  },
+  "doc_types": {
+    "odwolanie": {
+      "name": "odwolanie",
+      "classification": {
+        "min_score": 4.0,
+        "keywords": {
+          "odwołujący": 2.0,
+          "prezes krajowej izby odwoławczej": 2.0,
+          "wnoszę": 1.0,
+          "art. 513": 1.0,
+          "odwołanie": 1.0,
+          "zamawiający": 1.0,
+          "sygn. akt": -5.0,
+          "wyrok": -5.0,
+          "postanowienie": -3.0
+        }
+      },
+      "output_schema": {
+        "OdwolanieKIO": {
+          "data": "date",
+          "czynnosc_dzien": "date",
+          "czynnosc_powod_id": "reason_id",
+          "czynnosc_opis": "text",
+          "miejscowosc": "text"
+        },
+        "Odwolujacy": [
+          {
+            "krs": "krs",
+            "nazwa": "text",
+            "nip": "nip",
+            "regon": "regon",
+            "przez-pelnomocnika": "flag",
+            "pelnomocnik": {
+              "imie_nazwisko": "person_name",
+              "nazwa": "text",
+              "mail": "email"
+            }
+          }
+        ],
+        "Zamawiajacy": [
+          {
+            "krs": "krs",
+            "nazwa": "text",
+            "nip": "nip",
+            "regon": "regon",
+            "prowadzacy_postepowanie": "flag"
+          }
+        ],
+        "ZamowieniePubliczne": {
+          "numer_bzp": "bzp",
+          "numer_postepowania": "text",
+          "numer_ted": "ted",
+          "tytul": "text"
+        }
+      }
+    },
+    "pelnomocnictwo": {
+      "name": "pelnomocnictwo",
+      "classification": {
+        "min_score": 3.0,
+        "keywords": {
+          "pełnomocnictwo": 2.0,
+          "mocodawca": 2.0,
+          "ustanawiam": 2.0,
+          "udzielam": 1.0,
+          "upoważni": 1.0,
+          "umocowan": 1.0,
+          "do reprezentowania": 1.0,
+          "pełnomocnik": 1.0,
+          "niżej podpisany": 1.0
+        }
+      },
+      "output_schema": {
+        "mocodawca": [
+          {
+            "data": {
+              "imie_nazwisko": "person_name",
+              "krs": "krs",
+              "nazwa": "text",
+              "nip": "nip",
+              "typ": "party_type"
+            },
+            "podpisujacy": [
+              {
+                "imie_nazwisko": "person_name"
+              }
+            ]
+          }
+        ],
+        "pelnomocnicy": [
+          {
+            "imie_nazwisko": "person_name",
+            "pesel": "pesel"
+          }
+        ]
+      }
+    },
+    "przelew": {
+      "name": "przelew",
+      "classification": {
+        "min_score": 3.0,
+        "keywords": {
+          "przelew": 2.0,
+          "potwierdzenie": 1.0,
+          "rachunek": 1.0,
+          "kwota": 1.0,
+          "pln": 1.0,
+          "odbiorca": 1.0,
+          "zleceniodawca": 1.0,
+          "data operacji": 1.0,
+          "data transakcji": 1.0
+        }
+      },
+      "output_schema": {
+        "przelew_bankowy": {
+          "data_operacji": "date",
+          "kwota": "amount",
+          "na_rachunek": "account",
+          "numer_transakcji": "text",
+          "tytul": "text",
+          "z_rachunku": "account"
+        }
+      }
+    }
+  },
+  "scores": {
+    "documents": 226,
+    "strict": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 2341
+    },
+    "normalised": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 2341
+    },
+    "by_subset": {
+      "synthetic": {
+        "documents": 184,
+        "classification_accuracy": 1.0,
+        "strict": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 2032
+        }
+      },
+      "negatives": {
+        "documents": 12,
+        "classification_accuracy": 1.0,
+        "strict": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 0
+        }
+      },
+      "scans": {
+        "documents": 30,
+        "classification_accuracy": 0.7333,
+        "strict": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 309
+        }
+      }
+    },
+    "by_doc_type": {
+      "none": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "odwolanie": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1391
+      },
+      "pelnomocnictwo": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 536
+      },
+      "przelew": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 414
+      }
+    },
+    "by_field": {
+      "OdwolanieKIO.czynnosc_dzien": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "OdwolanieKIO.czynnosc_opis": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "OdwolanieKIO.czynnosc_powod_id": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "OdwolanieKIO.data": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 55
+      },
+      "OdwolanieKIO.miejscowosc": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 55
+      },
+      "Odwolujacy[].krs": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 64
+      },
+      "Odwolujacy[].nazwa": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "Odwolujacy[].nip": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "Odwolujacy[].pelnomocnik.imie_nazwisko": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 69
+      },
+      "Odwolujacy[].pelnomocnik.mail": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 69
+      },
+      "Odwolujacy[].pelnomocnik.nazwa": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 69
+      },
+      "Odwolujacy[].przez-pelnomocnika": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "Odwolujacy[].regon": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 66
+      },
+      "Zamawiajacy[].krs": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 58
+      },
+      "Zamawiajacy[].nazwa": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 74
+      },
+      "Zamawiajacy[].nip": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 71
+      },
+      "Zamawiajacy[].prowadzacy_postepowanie": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 8
+      },
+      "Zamawiajacy[].regon": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 66
+      },
+      "ZamowieniePubliczne.numer_bzp": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 53
+      },
+      "ZamowieniePubliczne.numer_postepowania": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "ZamowieniePubliczne.numer_ted": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 54
+      },
+      "ZamowieniePubliczne.tytul": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "mocodawca[].data.imie_nazwisko": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 5
+      },
+      "mocodawca[].data.krs": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 72
+      },
+      "mocodawca[].data.nazwa": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 76
+      },
+      "mocodawca[].data.nip": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 77
+      },
+      "mocodawca[].data.typ": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 77
+      },
+      "mocodawca[].podpisujacy[].imie_nazwisko": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 109
+      },
+      "pelnomocnicy[].imie_nazwisko": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 115
+      },
+      "pelnomocnicy[].pesel": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 5
+      },
+      "przelew_bankowy.data_operacji": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "przelew_bankowy.kwota": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "przelew_bankowy.na_rachunek": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "przelew_bankowy.numer_transakcji": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 64
+      },
+      "przelew_bankowy.tytul": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "przelew_bankowy.z_rachunku": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      }
+    },
+    "classification": {
+      "accuracy": 0.9646,
+      "confusion": {
+        "none": {
+          "none": 16
+        },
+        "odwolanie": {
+          "none": 8,
+          "odwolanie": 62
+        },
+        "pelnomocnictwo": {
+          "pelnomocnictwo": 70
+        },
+        "przelew": {
+          "przelew": 70
+        }
+      }
+    }
+  }
+}

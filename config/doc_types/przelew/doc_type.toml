@@ -1,0 +1,54 @@
+# Potwierdzenie przelewu (opłata skarbowa od pełnomocnictwa, wpis od odwołania).
+# Stems ("zleceni", "odbiorc", "nadawc") cover word forms and survive partial OCR damage.
+
+[classification]
+min_score = 3
+
+[classification.keywords]
+"przelew" = 2              # also matches "przelewu"
+"potwierdzenie" = 1
+"rachunek" = 1
+"kwota" = 1
+"pln" = 1
+"zleceni" = 1              # zleceniodawca, dane zlecenia
+"odbiorc" = 1              # odbiorca, rachunek odbiorcy
+"nadawc" = 1               # nadawca, rachunek nadawcy
+"kontrahent" = 1           # dane kontrahenta (bank statements)
+"data operacji" = 1
+"data transakcji" = 1
+
+# --- Field rules (see FieldRule in src/doc_types.py) ---------------------------------------------
+# Bank confirmations vary: label | value tables, labels stacked above values, prose letters.
+# Typed values take the first candidate after a label; a rival field's label ends the window,
+# which separates the sender's and the recipient's account. When both column labels sit above
+# both values, the sender's account comes first (nth) and the recipient's is never the sender's.
+
+[fields."przelew_bankowy.z_rachunku"]
+labels = ["z rachunku", "rachunek nadawcy", "rachunek zleceniodawcy", "rachunek obciazany", "rachunek platnika",
+          "dane nadawcy", "zleceniodawca", "nadawca", "platnik", "wlasciciel"]
+nth = 0
+
+[fields."przelew_bankowy.na_rachunek"]
+labels = ["na rachunek", "rachunek odbiorcy", "rachunek beneficjenta", "rachunek adresata", "rachunek uznawany",
+          "dane odbiorcy", "odbiorca", "beneficjent", "adresat"]
+exclude = ["przelew_bankowy.z_rachunku"]
+
+[fields."przelew_bankowy.kwota"]
+labels = ["kwota", "w kwocie", "na kwote", "wartosc"]
+window = 120
+
+[fields."przelew_bankowy.data_operacji"]
+labels = ["data operacji", "data transakcji", "data realizacji", "data wykonania", "data obciazenia",
+          "data ksiegowania", "data zlecenia", "w dniu", "data waluty", 'data\b']
+window = 120
+
+[fields."przelew_bankowy.numer_transakcji"]
+labels = ["nr ref", "numer referencyjny", "numer transakcji", "id transakcji", "identyfikator", "numer operacji",
+          "nr transakcji", "referencje"]
+pattern = '\b(?=[A-Z0-9/_.-]*\d)[A-Z0-9][A-Z0-9/_.-]{5,}\b'
+window = 120
+
+[fields."przelew_bankowy.tytul"]
+labels = ["tytul przelewu", "tytul operacji", "tytulem", 'tytul\b', "opis operacji", 'opis\b']
+skip = ['(?:status|typ operacji|kanal|waluta)\b\s*']
+cut = ['\s+(?:numer referencyjny|numer transakcji|nr ref|identyfikator|status|kanal|data|kwota)\b', '["”]', '\s\|\s']

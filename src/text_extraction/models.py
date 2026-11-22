@@ -1,11 +1,29 @@
-"""Result types of text extraction, independent of Docling."""
+"""Settings and result types of text extraction, independent of Docling."""
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from pydantic import BaseModel, ConfigDict
+
 # Blocks whose tops differ by at most this many PDF points are on the same line.
 LINE_TOLERANCE_PT = 3.0
+
+
+class ConversionSettings(BaseModel):
+    """Docling conversion parameters; defaults are the CPU benchmark winners (see extractor)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    # Every reference value sits on pages 1-2 (pages 3-4 held none, in synthetic cases and scans
+    # alike), and each scanned page costs ~3 s of OCR.
+    max_pages: int = 2
+    document_timeout_s: float = 120.0
+    ocr_lang: tuple[str, ...] = ("pl",)
+    # ACCURATE keeps bank tables as intact "label | value" rows; FAST splits some cells (6 values
+    # lost), "none" (cells as separate text blocks) keeps the same values and saves ~0.1 s/PDF.
+    table_mode: Literal["fast", "accurate", "none"] = "accurate"
+    num_threads: int = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,12 +60,13 @@ class TextBlock:
 
 @dataclass(frozen=True, slots=True)
 class ExtractedDocument:
-    """Text blocks of one PDF in reading order, plus conversion status."""
+    """Text blocks of one PDF in reading order, plus conversion status and cost."""
 
     source: Path
     blocks: tuple[TextBlock, ...]
     page_count: int
     status: Literal["success", "partial_success", "failure"]
+    conversion_s: float  # Docling's wall time for this PDF, measured when converted (also when cached since)
     errors: tuple[str, ...] = ()
 
     @property

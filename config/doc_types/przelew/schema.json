@@ -1,0 +1,10 @@
+{
+  "przelew_bankowy": {
+    "data_operacji": "date",
+    "kwota": "amount",
+    "na_rachunek": "account",
+    "numer_transakcji": "text",
+    "tytul": "text",
+    "z_rachunku": "account"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "przelew_bankowy": {
+    "data_operacji": "2026-07-15",
+    "kwota": 10000.0,
+    "na_rachunek": "60101010100081362231000000",
+    "numer_transakcji": null,
+    "tytul": "WPIS OD ODW., ZAM: KOMENDA WOJEWÓDZKA PAŃSTWOWEJ STRAŻY POŻARNEJ W JA, PN/58/2026/DOS",
+    "z_rachunku": "34124011110246356613822453"
+  }
+}

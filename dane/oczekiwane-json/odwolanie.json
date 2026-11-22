@@ -2,7 +2,7 @@
   "OdwolanieKIO": {
     "data": "2025-10-13", // Data z nagłówka pierwszej strony, z linii: 'DD.MM.RRRR'.
     "czynnosc_dzien": "2025-10-01", // Data czynności uruchamiającej bieg terminu odwołania dla pierwszego zarzutu (ISO YYYY-MM-DD). Jeśli brak wiarygodnej daty dla pierwszego zarzutu, zwróć null.
-    "czynnosc_powod_id": 4, // Identyfikator powodu odwołania jako liczba całkowita 1-12 (bez zera wiodącego), ustalana WYŁĄCZNIE na podstawie pierwszego zarzutu.
+    "czynnosc_powod_id": 4, //Identyfikator powodu odwołania jako liczba całkowita 1-12 (bez zera wiodącego), ustalana WYŁĄCZNIE na podstawie pierwszego zarzutu: 1=Decyzja o odrzuceniu oferty, 2=Ogłoszenie wyboru oferty, 3=Decyzja o wykluczeniu wykonawcy, 4=Publikacja specyfikacji warunków zamówienia (SWZ), 5=Modyfikacja treści SWZ, 6=Odpowiedzi/wyjaśnienia do SWZ, 7=Zaniechanie odrzucenia oferty, 8=Zaniechanie wykluczenia wykonawcy, 9=Decyzja o unieważnieniu postępowania, 10=Zaniechanie unieważnienia postępowania, 11=Opis przedmiotu zamówienia (OPZ), 12=Projektowane postanowienia umowy.
     "czynnosc_opis": "Publikacja specyfikacji warunków zamówienia (SWZ)", // Kanoniczny opis zaskarżonej czynności zgodny 1:1 z czynnosc_powod_id i ustalany WYŁĄCZNIE z pierwszego zarzutu.
     "miejscowosc": "Pruszków" // Miejscowość z nagłówka pierwszej strony, z linii typu: 'X, dnia ...' albo 'X DD.MM.RRRR'.
   },
@@ -14,7 +14,7 @@
       "regon": null, // REGON Odwołującego lub Lidera konsorcjum podmiotów Odwołujących (jeśli występuje).
       "przez-pelnomocnika": 1, //1- tak, 0- nie
       "pelnomocnik": {
-        "imie_nazwisko": "Marcel Kielce", //imię i nazwisko jeśli występuje pełnomocnik odwołującego
+        "imie_nazwisko": "Marcel Kielce", //imię i nazwisko w mianowniku jeśli występuje pełnomocnik odwołującego
         "nazwa": "Kancelaria Radców Prawnych" //nazwa podmiotu zatrudniającego pełnomocnika
         "mail": "info@prawnik.xy" // adres email kontaktowy do pełnomocnika
       }

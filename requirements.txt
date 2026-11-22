@@ -4,7 +4,22 @@ docling>=2.151,<3
 # OCR engine used by Docling for scanned pages (pip-installable, Polish support)
 rapidocr>=3.10,<4
 onnxruntime>=1.32
+# Typed settings and validated data (already a Docling dependency, used directly)
+pydantic>=2.14
 # Parsing organiser's expected-JSON files (they contain // comments)
 json5>=0.17
 # Data analysis / reports
 pandas>=3.1
+# Tests
+pytest>=9.2
+# LLM client for OpenAI-compatible endpoints (EU-hosted, open-weight models)
+openai>=3.57
+# HTTP API with Swagger UI (python -m uvicorn src.api:app) - MIT / BSD / Apache 2.0
+fastapi>=0.165
+uvicorn>=0.54
+python-multipart>=0.0.34
+# Web UI, a client of the API (python -m streamlit run src/web_app.py) - Apache 2.0
+streamlit>=1.67
+httpx>=0.28
+# Walkthrough notebook for the jury (python -m notebook walkthrough.ipynb) - BSD
+notebook>=7.6

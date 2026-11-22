@@ -1,0 +1,1713 @@
+{
+  "run": {
+    "run_id": "20261122-085817_hybrid-mistral",
+    "experiment": "hybrid-mistral",
+    "pipeline": "StagedPipeline",
+    "started_at": "2026-11-22T08:58:17.006139+01:00",
+    "duration_s": 26.94,
+    "documents": 226,
+    "seconds_per_document": 0.119,
+    "dataset_id": "00876d37b058",
+    "git_commit": "79a7402",
+    "git_dirty": true,
+    "llm_usage": {
+      "calls": 70,
+      "cache_hits": 0,
+      "failures": 0,
+      "prompt_tokens": 30663,
+      "completion_tokens": 851,
+      "seconds": 24.953
+    }
+  },
+  "config": {
+    "name": "hybrid-mistral",
+    "description": "C6: hybrid-v1 with Mistral-Small-3.2:24b instead of Bielik-11B (model comparison).",
+    "conversion": {
+      "max_pages": 2,
+      "document_timeout_s": 120.0,
+      "ocr_lang": [
+        "pl"
+      ],
+      "table_mode": "accurate",
+      "num_threads": 4
+    },
+    "classification": {
+      "pages": 2,
+      "head_chars": 300
+    },
+    "llm": {
+      "base_url": "https://llm.hpc.psnc.pl/v1",
+      "model": "Mistral-Small-3.2:24b",
+      "api_key_env": "LLM_API_KEY",
+      "temperature": 0.0,
+      "max_tokens": 200,
+      "timeout_s": 20.0,
+      "max_retries": 1,
+      "max_consecutive_failures": 3
+    }
+  },
+  "doc_types": {
+    "odwolanie": {
+      "name": "odwolanie",
+      "classification": {
+        "min_score": 4.0,
+        "keywords": {
+          "odwołujący": 2.0,
+          "prezes krajowej izby odwoławczej": 2.0,
+          "wnoszę": 1.0,
+          "art. 513": 1.0,
+          "odwołanie": 1.0,
+          "zamawiający": 1.0
+        },
+        "head_keywords": {
+          "sygn. akt": -5.0,
+          "wyrok": -5.0,
+          "postanowienie": -5.0
+        }
+      },
+      "output_schema": {
+        "OdwolanieKIO": {
+          "data": "date",
+          "czynnosc_dzien": "date",
+          "czynnosc_powod_id": "reason_id",
+          "czynnosc_opis": "reason_description",
+          "miejscowosc": "text"
+        },
+        "Odwolujacy": [
+          {
+            "krs": "krs",
+            "nazwa": "text",
+            "nip": "nip",
+            "regon": "regon",
+            "przez-pelnomocnika": "flag",
+            "pelnomocnik": {
+              "imie_nazwisko": "person_name",
+              "nazwa": "text",
+              "mail": "email"
+            }
+          }
+        ],
+        "Zamawiajacy": [
+          {
+            "krs": "krs",
+            "nazwa": "text",
+            "nip": "nip",
+            "regon": "regon",
+            "prowadzacy_postepowanie": "flag"
+          }
+        ],
+        "ZamowieniePubliczne": {
+          "numer_bzp": "bzp",
+          "numer_postepowania": "text",
+          "numer_ted": "ted",
+          "tytul": "text"
+        }
+      },
+      "sections": {
+        "odwolujacy": {
+          "start": [
+            "odwolujac\\w*\\s*:"
+          ],
+          "end": [
+            "zamawiaj\\w*\\s*:",
+            "dotyczy",
+            "^\\s*odwolanie\\s*$",
+            "\\bwnosz"
+          ],
+          "max_chars": 1500
+        },
+        "zamawiajacy": {
+          "start": [
+            "zamawiaj\\w*\\s*:"
+          ],
+          "end": [
+            "odwolujac\\w*\\s*:",
+            "dotyczy",
+            "^\\s*odwolanie\\s*$",
+            "\\bwnosz"
+          ],
+          "max_chars": 1500
+        },
+        "header": {
+          "start": [],
+          "end": [],
+          "max_chars": 4000
+        },
+        "action": {
+          "start": [
+            "zamawiaj\\w* (?:\\w+ ){0,6}?w dniu",
+            "czynnosc\\w* .{0,80}w dniu",
+            "przekazan\\w* .{0,40}w dniu",
+            "poinformowan\\w* pismem z"
+          ],
+          "end": [
+            "\\.\\s+(?:zarzut|uprzednio|wczesniej|nastepnie|pozniej|w zwiazku|odwolujac|tym samym|zatem|wobec|informacj)",
+            "\\n"
+          ],
+          "max_chars": 220
+        },
+        "contested": {
+          "start": [
+            "wobec (?:niezgodn\\w* )?czynnosci",
+            "wobec tresci",
+            "odwolanie (?:od|wobec)",
+            "polegajac\\w* na\\s*:",
+            "zarzut\\w* nr 1",
+            "zarzuca\\w*"
+          ],
+          "end": [],
+          "max_chars": 500
+        },
+        "first_charge": {
+          "start": [
+            "zarzut\\w* nr 1\\b",
+            "zarzut\\w* 1\\b"
+          ],
+          "end": [],
+          "max_chars": 400
+        }
+      },
+      "fields": {
+        "OdwolanieKIO.data": {
+          "sections": [
+            "header"
+          ],
+          "labels": [
+            "\\b[a-z][a-z-]+,\\s*(?:dnia\\s*)?(?=\\d)",
+            "^\\s*(?=\\d{1,2}[./-]\\d{1,2}[./-]\\d{4}\\s*r?\\.?\\s*[a-z])"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 40,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "OdwolanieKIO.miejscowosc": {
+          "sections": [
+            "header"
+          ],
+          "labels": [],
+          "pattern": "(?<![\\w-])((?:(?:Nowy|Nowa|Nowe|Stary|Stara|Zielona|Jelenia|Ruda|Biała|Gorzów|Kędzierzyn|Ostrów|Piotrków|Tomaszów|Grodzisk|Mińsk|Kamienna|Dąbrowa)[ \\t])?[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+(?:-[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)?),\\s*(?:dnia\\s*)?\\d|\\d{4}\\s*r?\\.?[ \\t]*((?:(?:Nowy|Nowa|Nowe|Stary|Stara|Zielona|Jelenia|Ruda|Biała|Gorzów|Kędzierzyn|Ostrów|Piotrków|Tomaszów|Grodzisk|Mińsk|Kamienna|Dąbrowa)[ \\t])?[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+(?:-[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)?),",
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "OdwolanieKIO.czynnosc_dzien": {
+          "sections": [
+            "action",
+            "contested"
+          ],
+          "labels": [],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "OdwolanieKIO.czynnosc_powod_id": {
+          "sections": [
+            "action",
+            "contested"
+          ],
+          "labels": [],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {
+            "10": [
+              "zaniecha\\w* uniewazni",
+              "nie uniewazni"
+            ],
+            "9": [
+              "uniewazni\\w*"
+            ],
+            "7": [
+              "zaniecha\\w* odrzuceni",
+              "nie odrzuci"
+            ],
+            "8": [
+              "zaniecha\\w* wykluczeni",
+              "nie wykluczy"
+            ],
+            "1": [
+              "odrzuc\\w* ofert",
+              "odrzuceni\\w*"
+            ],
+            "3": [
+              "wyklucz\\w*"
+            ],
+            "2": [
+              "wyb[oo]r\\w* ofert",
+              "wybra\\w* ofert",
+              "najkorzystniejsz"
+            ],
+            "6": [
+              "(?:odpowiedz|wyjasnieni)\\w* .{0,30}(?:swz|specyfikacji)"
+            ],
+            "5": [
+              "(?:zmodyfikowa|zmian|modyfikac)\\w* .{0,20}(?:swz|specyfikacji)"
+            ],
+            "12": [
+              "projektowan\\w* postanowie\\w* umowy",
+              "wz[oo]r\\w* umowy"
+            ],
+            "11": [
+              "opis\\w* przedmiotu zamowienia",
+              "\\bopz\\b"
+            ],
+            "4": [
+              "(?:opublikowa|publikac|tresc)\\w* .{0,20}(?:swz|specyfikacj)",
+              "specyfikacj\\w* warunkow zamowienia",
+              "\\bswz\\b"
+            ]
+          },
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "OdwolanieKIO.czynnosc_opis": {
+          "sections": [],
+          "labels": [],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": {
+            "source": "OdwolanieKIO.czynnosc_powod_id",
+            "table": {
+              "1": "Decyzja o odrzuceniu oferty",
+              "2": "Ogłoszenie wyboru oferty",
+              "3": "Decyzja o wykluczeniu wykonawcy",
+              "4": "Publikacja specyfikacji warunków zamówienia (SWZ)",
+              "5": "Modyfikacja treści SWZ",
+              "6": "Odpowiedzi/wyjaśnienia do SWZ",
+              "7": "Zaniechanie odrzucenia oferty",
+              "8": "Zaniechanie wykluczenia wykonawcy",
+              "9": "Decyzja o unieważnieniu postępowania",
+              "10": "Zaniechanie unieważnienia postępowania",
+              "11": "Opis przedmiotu zamówienia (OPZ)",
+              "12": "Projektowane postanowienia umowy"
+            }
+          },
+          "only_if": {}
+        },
+        "Odwolujacy[].nazwa": {
+          "sections": [
+            "odwolujacy"
+          ],
+          "labels": [],
+          "pattern": null,
+          "cut": [
+            "\\s*,?\\s+(?:ul|al|pl|os)\\.",
+            "\\s*\\d{2}-\\d{3}",
+            "(?:^|\\s+)(?:krs|nip|regon|tel|fax|e-?mail|adres)\\b",
+            ",?\\s+z siedziba",
+            "\\s+reprezentowan",
+            "\\s*\\("
+          ],
+          "skip": [
+            "konsorcj\\w*[^\\n]*\\n\\s*(?:1\\)\\s*)?(?:lider\\w*(?:\\s+konsorcj\\w*)?\\s*:?)?\\s*"
+          ],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "Odwolujacy[].krs": {
+          "sections": [
+            "odwolujacy"
+          ],
+          "labels": [
+            "krs\\b"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 40,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "Odwolujacy[].nip": {
+          "sections": [
+            "odwolujacy"
+          ],
+          "labels": [
+            "nip\\b"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 40,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "Odwolujacy[].regon": {
+          "sections": [
+            "odwolujacy"
+          ],
+          "labels": [
+            "regon\\b"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 40,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "Odwolujacy[].przez-pelnomocnika": {
+          "sections": [
+            "odwolujacy"
+          ],
+          "labels": [],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {
+            "1": [
+              "reprezentowan\\w* przez",
+              "pelnomocni"
+            ]
+          },
+          "default": "0",
+          "lookup": null,
+          "only_if": {}
+        },
+        "Odwolujacy[].pelnomocnik.imie_nazwisko": {
+          "sections": [
+            "odwolujacy"
+          ],
+          "labels": [
+            "reprezentowan\\w* przez(?:\\s+p\\w+nomocnika)?\\s*:?"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 150,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "Odwolujacy[].pelnomocnik.nazwa": {
+          "sections": [
+            "odwolujacy"
+          ],
+          "labels": [
+            "adres do korespondencji\\s*:?"
+          ],
+          "pattern": null,
+          "cut": [
+            "\\s*,?\\s+(?:ul|al|pl|os)\\.",
+            "\\s*\\d{2}-\\d{3}",
+            "\\s+tel\\b",
+            ",?\\s+e-?mail"
+          ],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "Odwolujacy[].pelnomocnik.mail": {
+          "sections": [
+            "odwolujacy"
+          ],
+          "labels": [
+            "adres do korespondencji",
+            "reprezentowan\\w* przez",
+            "e-?mail"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 500,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "Zamawiajacy[].nazwa": {
+          "sections": [
+            "zamawiajacy"
+          ],
+          "labels": [],
+          "pattern": null,
+          "cut": [
+            "\\s*,?\\s+(?:ul|al|pl|os)\\.",
+            "\\s*\\d{2}-\\d{3}",
+            "(?:^|\\s+)(?:krs|nip|regon|tel|fax|e-?mail|adres)\\b",
+            ",?\\s+z siedziba",
+            "\\s*\\(",
+            "\\s+e-?mail"
+          ],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "Zamawiajacy[].krs": {
+          "sections": [
+            "zamawiajacy"
+          ],
+          "labels": [
+            "krs\\b"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 40,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "Zamawiajacy[].nip": {
+          "sections": [
+            "zamawiajacy"
+          ],
+          "labels": [
+            "nip\\b"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 40,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "Zamawiajacy[].regon": {
+          "sections": [
+            "zamawiajacy"
+          ],
+          "labels": [
+            "regon\\b"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 40,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "ZamowieniePubliczne.numer_bzp": {
+          "sections": [
+            "header"
+          ],
+          "labels": [],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "ZamowieniePubliczne.numer_ted": {
+          "sections": [
+            "header"
+          ],
+          "labels": [],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "ZamowieniePubliczne.numer_postepowania": {
+          "sections": [
+            "header"
+          ],
+          "labels": [
+            "nr referencyjny(?: sprawy)?",
+            "numer referencyjny",
+            "znak sprawy",
+            "numer postepowania",
+            "nr postepowania",
+            "postepowanie nr",
+            "nr sprawy"
+          ],
+          "pattern": "\\b(?=[\\w./-]*\\d)[A-Z0-9][\\w./-]*[\\w/-]",
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 80,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "ZamowieniePubliczne.tytul": {
+          "sections": [
+            "header"
+          ],
+          "labels": [
+            "\\bpn\\.?",
+            "pod nazwa",
+            "nazwa zamowienia",
+            "nazwa postepowania"
+          ],
+          "pattern": null,
+          "cut": [
+            "[\"”“]",
+            ",\\s*(?:nr|numer|znak|prowadzon|ogloszen)",
+            "\\s+nr referencyjny"
+          ],
+          "skip": [],
+          "nth": null,
+          "window": 400,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        }
+      },
+      "llm_tasks": [
+        {
+          "name": "contested_action",
+          "kind": "extract",
+          "fields": [
+            "OdwolanieKIO.czynnosc_powod_id"
+          ],
+          "sections": [
+            "action",
+            "contested"
+          ],
+          "context_chars": 1500,
+          "prompt": "Jesteś prawnikiem zamówień publicznych. Poniżej fragment odwołania do Krajowej Izby Odwoławczej.\nFragment opisuje zaskarżoną czynność lub zaniechanie zamawiającego. Przypisz je do jednej kategorii i podaj jej kod czynnosc_powod_id:\n1 = Decyzja o odrzuceniu oferty (zamawiający odrzucił ofertę, zwykle odwołującego)\n2 = Ogłoszenie wyboru oferty (wybór oferty najkorzystniejszej, ocena ofert)\n3 = Decyzja o wykluczeniu wykonawcy (zamawiający wykluczył wykonawcę)\n4 = Publikacja specyfikacji warunków zamówienia (SWZ) – zarzuty wobec treści SWZ, ogłoszenia lub warunków udziału\n5 = Modyfikacja treści SWZ (zarzut dotyczy zmiany SWZ)\n6 = Odpowiedzi/wyjaśnienia do SWZ (odpowiedzi na pytania wykonawców)\n7 = Zaniechanie odrzucenia oferty (zamawiający NIE odrzucił cudzej oferty, choć powinien)\n8 = Zaniechanie wykluczenia wykonawcy (zamawiający NIE wykluczył wykonawcy, choć powinien)\n9 = Decyzja o unieważnieniu postępowania\n10 = Zaniechanie unieważnienia postępowania (zamawiający NIE unieważnił postępowania)\n11 = Opis przedmiotu zamówienia (OPZ)\n12 = Projektowane postanowienia umowy\nJeśli fragment nie pozwala ustalić kodu, zwróć null.",
+          "mode": "decide",
+          "when": []
+        },
+        {
+          "name": "nominative_names",
+          "kind": "nominative",
+          "fields": [
+            "Odwolujacy[].pelnomocnik.imie_nazwisko"
+          ],
+          "sections": [],
+          "context_chars": 2000,
+          "prompt": "Podane imiona i nazwiska mogą być odmienione (np. „Jana Kowalskiego”, „Annę Nowak”).\nZapisz każde w mianowniku („Jan Kowalski”, „Anna Nowak”), w tej samej kolejności, bez tytułów i funkcji.\nZwróć listę names o tej samej długości.",
+          "mode": "fill",
+          "when": [
+            "(?:ego|emu|owi|iem|ą|ę|iej|skiej|ckiej)\\b"
+          ]
+        }
+      ]
+    },
+    "pelnomocnictwo": {
+      "name": "pelnomocnictwo",
+      "classification": {
+        "min_score": 3.0,
+        "keywords": {
+          "pełnomocnictwo": 2.0,
+          "mocodawca": 2.0,
+          "ustanawiam": 2.0,
+          "udzielam": 1.0,
+          "upoważni": 1.0,
+          "umocowan": 1.0,
+          "do reprezentowania": 1.0,
+          "pełnomocnik": 1.0,
+          "niżej podpisany": 1.0
+        },
+        "head_keywords": {}
+      },
+      "output_schema": {
+        "mocodawca": [
+          {
+            "data": {
+              "imie_nazwisko": "person_name",
+              "krs": "krs",
+              "nazwa": "text",
+              "nip": "nip",
+              "typ": "party_type"
+            },
+            "podpisujacy": [
+              {
+                "imie_nazwisko": "person_name"
+              }
+            ]
+          }
+        ],
+        "pelnomocnicy": [
+          {
+            "imie_nazwisko": "person_name",
+            "pesel": "pesel"
+          }
+        ]
+      },
+      "sections": {},
+      "fields": {
+        "mocodawca[].data.nazwa": {
+          "sections": [],
+          "labels": [],
+          "pattern": "(?i:pod firm\\w*:?)\\s+([^,\\n(]+)|(?:(?i:mocodawca)[ \\t]+)?((?:[A-ZĄĆĘŁŃÓŚŹŻ0-9][\\w&'.-]*)(?:[ \\t]+(?:[A-ZĄĆĘŁŃÓŚŹŻ0-9][\\w&'.-]*|i|w|we|na|dla|im\\.))*?[ \\t]+(?:S\\.[ \\t]?A\\.|[Ss]p\\.[ \\t]?z[ \\t]?o\\.[ \\t]?o\\.|[Ss]p\\.[ \\t]?k\\.|[Ss]p\\.[ \\t]?j\\.|[Ss]p\\.[ \\t]?p\\.|[Ss]półka[ \\t]+(?:z[ \\t]+ograniczoną[ \\t]+odpowiedzialnością|akcyjna|komandytowa|jawna|partnerska))(?:[ \\t]+sp\\.[ \\t]?k\\.)?)",
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "mocodawca[].data.krs": {
+          "sections": [],
+          "labels": [
+            "krs\\b"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 40,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "mocodawca[].data.nip": {
+          "sections": [],
+          "labels": [
+            "nip\\b"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 40,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "mocodawca[].data.typ": {
+          "sections": [],
+          "labels": [],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {
+            "osoba_fizyczna": [
+              "prowadzac\\w* dzialalnosc",
+              "ceidg",
+              "centralnej ewidencji",
+              "pod firma"
+            ],
+            "osoba_prawna": [
+              "\\bs\\.\\s?a\\.",
+              "\\bsp\\.\\s?z\\s?o\\.\\s?o\\.",
+              "\\bsp\\.\\s?[kjp]\\.",
+              "\\bspolka\\b",
+              "\\bkrs\\b"
+            ]
+          },
+          "default": "osoba_prawna",
+          "lookup": null,
+          "only_if": {}
+        },
+        "mocodawca[].data.imie_nazwisko": {
+          "sections": [],
+          "labels": [
+            "nizej podpisan\\w*",
+            "^\\s*ja,",
+            "pod firma"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 80,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {
+            "mocodawca[].data.typ": "osoba_fizyczna"
+          }
+        },
+        "pelnomocnicy[].imie_nazwisko": {
+          "sections": [],
+          "labels": [
+            "pelnomocnicy\\s*\\|",
+            "udziel\\w* pelnomocnictw\\w*",
+            "ustanawia\\w*",
+            "upowazniam\\w*",
+            "pelnomocnikiem\\w*",
+            "pelnomocnikami",
+            "\\bpelnomocnik\\s+(?=(?:adw|r\\.\\s*pr|radca|mec)\\b)"
+          ],
+          "pattern": null,
+          "cut": [
+            "do reprezentowania",
+            "\\bdo\\s*:",
+            "\\bdo\\s+(?:wniesienia|zastepowania|dzialania|reprezentowania|udzialu)",
+            "zamawiaj",
+            "w postepowaniu",
+            "postepowanie\\s*\\|",
+            "zakres\\s*\\|",
+            "prowadzon",
+            "na rzecz",
+            "[\"„]"
+          ],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "segment",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "pelnomocnicy[].pesel": {
+          "sections": [],
+          "labels": [
+            "pesel\\b"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 40,
+          "multiple": "occurrences",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "mocodawca[].podpisujacy[].imie_nazwisko": {
+          "sections": [],
+          "labels": [
+            "\\.{5,}",
+            "reprezentowan\\w* przez\\s*:?",
+            "podpisan\\w* przez",
+            "w imieniu ktore\\w* dziala\\w*"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 160,
+          "multiple": "occurrences",
+          "exclude": [
+            "pelnomocnicy[].imie_nazwisko"
+          ],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        }
+      },
+      "llm_tasks": [
+        {
+          "name": "nominative_names",
+          "kind": "nominative",
+          "fields": [
+            "pelnomocnicy[].imie_nazwisko",
+            "mocodawca[].podpisujacy[].imie_nazwisko",
+            "mocodawca[].data.imie_nazwisko"
+          ],
+          "sections": [],
+          "context_chars": 2000,
+          "prompt": "Podane imiona i nazwiska mogą być odmienione (np. „Jana Kowalskiego”, „Annę Nowak”).\nZapisz każde w mianowniku („Jan Kowalski”, „Anna Nowak”), w tej samej kolejności, bez tytułów i funkcji.\nZwróć listę names o tej samej długości.",
+          "mode": "fill",
+          "when": [
+            "(?:ego|emu|owi|iem|ą|ę|iej|skiej|ckiej)\\b"
+          ]
+        }
+      ]
+    },
+    "przelew": {
+      "name": "przelew",
+      "classification": {
+        "min_score": 3.0,
+        "keywords": {
+          "przelew": 2.0,
+          "potwierdzenie": 1.0,
+          "rachunek": 1.0,
+          "kwota": 1.0,
+          "pln": 1.0,
+          "zleceni": 1.0,
+          "odbiorc": 1.0,
+          "nadawc": 1.0,
+          "kontrahent": 1.0,
+          "data operacji": 1.0,
+          "data transakcji": 1.0
+        },
+        "head_keywords": {}
+      },
+      "output_schema": {
+        "przelew_bankowy": {
+          "data_operacji": "date",
+          "kwota": "amount",
+          "na_rachunek": "account",
+          "numer_transakcji": "text",
+          "tytul": "text",
+          "z_rachunku": "account"
+        }
+      },
+      "sections": {},
+      "fields": {
+        "przelew_bankowy.z_rachunku": {
+          "sections": [],
+          "labels": [
+            "z rachunku",
+            "rachunek nadawcy",
+            "rachunek zleceniodawcy",
+            "rachunek obciazany",
+            "rachunek platnika",
+            "dane nadawcy",
+            "zleceniodawca",
+            "nadawca",
+            "platnik",
+            "wlasciciel"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": 0,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "przelew_bankowy.na_rachunek": {
+          "sections": [],
+          "labels": [
+            "na rachunek",
+            "rachunek odbiorcy",
+            "rachunek beneficjenta",
+            "rachunek adresata",
+            "rachunek uznawany",
+            "dane odbiorcy",
+            "odbiorca",
+            "beneficjent",
+            "adresat"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [
+            "przelew_bankowy.z_rachunku"
+          ],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "przelew_bankowy.kwota": {
+          "sections": [],
+          "labels": [
+            "kwota",
+            "w kwocie",
+            "na kwote",
+            "wartosc"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 120,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "przelew_bankowy.data_operacji": {
+          "sections": [],
+          "labels": [
+            "data operacji",
+            "data transakcji",
+            "data realizacji",
+            "data wykonania",
+            "data obciazenia",
+            "data ksiegowania",
+            "data zlecenia",
+            "w dniu",
+            "data waluty",
+            "data\\b"
+          ],
+          "pattern": null,
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 120,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "przelew_bankowy.numer_transakcji": {
+          "sections": [],
+          "labels": [
+            "nr ref",
+            "numer referencyjny",
+            "numer transakcji",
+            "id transakcji",
+            "identyfikator",
+            "numer operacji",
+            "nr transakcji",
+            "referencje"
+          ],
+          "pattern": "\\b(?=[A-Z0-9/_.-]*\\d)[A-Z0-9][A-Z0-9/_.-]{5,}\\b",
+          "cut": [],
+          "skip": [],
+          "nth": null,
+          "window": 120,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        },
+        "przelew_bankowy.tytul": {
+          "sections": [],
+          "labels": [
+            "tytul przelewu",
+            "tytul operacji",
+            "tytulem",
+            "tytul\\b",
+            "opis operacji",
+            "opis\\b"
+          ],
+          "pattern": null,
+          "cut": [
+            "\\s+(?:numer referencyjny|numer transakcji|nr ref|identyfikator|status|kanal|data|kwota)\\b",
+            "[\"”]",
+            "\\s\\|\\s"
+          ],
+          "skip": [
+            "(?:status|typ operacji|kanal|waluta)\\b\\s*"
+          ],
+          "nth": null,
+          "window": 300,
+          "multiple": "no",
+          "exclude": [],
+          "classify": {},
+          "default": null,
+          "lookup": null,
+          "only_if": {}
+        }
+      },
+      "llm_tasks": []
+    }
+  },
+  "scores": {
+    "documents": 226,
+    "strict": {
+      "precision": 0.9686,
+      "recall": 0.9359,
+      "f1": 0.952,
+      "tp": 2191,
+      "fp": 71,
+      "fn": 150
+    },
+    "normalised": {
+      "precision": 0.9686,
+      "recall": 0.9359,
+      "f1": 0.952,
+      "tp": 2191,
+      "fp": 71,
+      "fn": 150
+    },
+    "coverage": {
+      "share": 0.9902,
+      "present": 2026,
+      "total": 2046
+    },
+    "conversion_s": 0.89,
+    "by_subset": {
+      "synthetic": {
+        "documents": 184,
+        "classification_accuracy": 1.0,
+        "strict": {
+          "precision": 0.9834,
+          "recall": 0.9592,
+          "f1": 0.9711,
+          "tp": 1949,
+          "fp": 33,
+          "fn": 83
+        },
+        "coverage": {
+          "odwolanie": {
+            "share": 0.9961,
+            "present": 1024,
+            "total": 1028
+          },
+          "pelnomocnictwo": {
+            "share": 1.0,
+            "present": 392,
+            "total": 392
+          },
+          "przelew": {
+            "share": 1.0,
+            "present": 360,
+            "total": 360
+          }
+        },
+        "conversion_s": 0.42,
+        "max_conversion_s": 0.92
+      },
+      "negatives": {
+        "documents": 12,
+        "classification_accuracy": 1.0,
+        "strict": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "coverage": {},
+        "conversion_s": 1.75,
+        "max_conversion_s": 5.38
+      },
+      "scans": {
+        "documents": 30,
+        "classification_accuracy": 1.0,
+        "strict": {
+          "precision": 0.8643,
+          "recall": 0.7832,
+          "f1": 0.8217,
+          "tp": 242,
+          "fp": 38,
+          "fn": 67
+        },
+        "coverage": {
+          "odwolanie": {
+            "share": 0.9586,
+            "present": 139,
+            "total": 145
+          },
+          "pelnomocnictwo": {
+            "share": 0.9701,
+            "present": 65,
+            "total": 67
+          },
+          "przelew": {
+            "share": 0.8519,
+            "present": 46,
+            "total": 54
+          }
+        },
+        "conversion_s": 3.43,
+        "max_conversion_s": 7.09
+      }
+    },
+    "by_doc_type": {
+      "none": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "odwolanie": {
+        "precision": 0.9756,
+        "recall": 0.9482,
+        "f1": 0.9617,
+        "tp": 1319,
+        "fp": 33,
+        "fn": 72
+      },
+      "pelnomocnictwo": {
+        "precision": 0.9469,
+        "recall": 0.8974,
+        "f1": 0.9215,
+        "tp": 481,
+        "fp": 27,
+        "fn": 55
+      },
+      "przelew": {
+        "precision": 0.9726,
+        "recall": 0.9444,
+        "f1": 0.9583,
+        "tp": 391,
+        "fp": 11,
+        "fn": 23
+      }
+    },
+    "by_field": {
+      "OdwolanieKIO.czynnosc_dzien": {
+        "precision": 1.0,
+        "recall": 0.9857,
+        "f1": 0.9928,
+        "tp": 69,
+        "fp": 0,
+        "fn": 1
+      },
+      "OdwolanieKIO.czynnosc_opis": {
+        "precision": 0.8986,
+        "recall": 0.8857,
+        "f1": 0.8921,
+        "tp": 62,
+        "fp": 7,
+        "fn": 8
+      },
+      "OdwolanieKIO.czynnosc_powod_id": {
+        "precision": 0.8986,
+        "recall": 0.8857,
+        "f1": 0.8921,
+        "tp": 62,
+        "fp": 7,
+        "fn": 8
+      },
+      "OdwolanieKIO.data": {
+        "precision": 1.0,
+        "recall": 0.9818,
+        "f1": 0.9908,
+        "tp": 54,
+        "fp": 0,
+        "fn": 1
+      },
+      "OdwolanieKIO.miejscowosc": {
+        "precision": 1.0,
+        "recall": 0.9818,
+        "f1": 0.9908,
+        "tp": 54,
+        "fp": 0,
+        "fn": 1
+      },
+      "Odwolujacy[].krs": {
+        "precision": 0.9846,
+        "recall": 1.0,
+        "f1": 0.9922,
+        "tp": 64,
+        "fp": 1,
+        "fn": 0
+      },
+      "Odwolujacy[].nazwa": {
+        "precision": 0.9,
+        "recall": 0.9,
+        "f1": 0.9,
+        "tp": 63,
+        "fp": 7,
+        "fn": 7
+      },
+      "Odwolujacy[].nip": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 70,
+        "fp": 0,
+        "fn": 0
+      },
+      "Odwolujacy[].pelnomocnik.imie_nazwisko": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 69,
+        "fp": 0,
+        "fn": 0
+      },
+      "Odwolujacy[].pelnomocnik.mail": {
+        "precision": 0.9857,
+        "recall": 1.0,
+        "f1": 0.9928,
+        "tp": 69,
+        "fp": 1,
+        "fn": 0
+      },
+      "Odwolujacy[].pelnomocnik.nazwa": {
+        "precision": 1.0,
+        "recall": 0.9855,
+        "f1": 0.9927,
+        "tp": 68,
+        "fp": 0,
+        "fn": 1
+      },
+      "Odwolujacy[].przez-pelnomocnika": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 70,
+        "fp": 0,
+        "fn": 0
+      },
+      "Odwolujacy[].regon": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 66,
+        "fp": 0,
+        "fn": 0
+      },
+      "Zamawiajacy[].krs": {
+        "precision": 1.0,
+        "recall": 0.9138,
+        "f1": 0.955,
+        "tp": 53,
+        "fp": 0,
+        "fn": 5
+      },
+      "Zamawiajacy[].nazwa": {
+        "precision": 0.9552,
+        "recall": 0.8649,
+        "f1": 0.9078,
+        "tp": 64,
+        "fp": 3,
+        "fn": 10
+      },
+      "Zamawiajacy[].nip": {
+        "precision": 1.0,
+        "recall": 0.9155,
+        "f1": 0.9559,
+        "tp": 65,
+        "fp": 0,
+        "fn": 6
+      },
+      "Zamawiajacy[].prowadzacy_postepowanie": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 8
+      },
+      "Zamawiajacy[].regon": {
+        "precision": 0.9833,
+        "recall": 0.8939,
+        "f1": 0.9365,
+        "tp": 59,
+        "fp": 1,
+        "fn": 7
+      },
+      "ZamowieniePubliczne.numer_bzp": {
+        "precision": 1.0,
+        "recall": 0.9811,
+        "f1": 0.9905,
+        "tp": 52,
+        "fp": 0,
+        "fn": 1
+      },
+      "ZamowieniePubliczne.numer_postepowania": {
+        "precision": 0.9855,
+        "recall": 0.9714,
+        "f1": 0.9784,
+        "tp": 68,
+        "fp": 1,
+        "fn": 2
+      },
+      "ZamowieniePubliczne.numer_ted": {
+        "precision": 1.0,
+        "recall": 0.9815,
+        "f1": 0.9907,
+        "tp": 53,
+        "fp": 0,
+        "fn": 1
+      },
+      "ZamowieniePubliczne.tytul": {
+        "precision": 0.9286,
+        "recall": 0.9286,
+        "f1": 0.9286,
+        "tp": 65,
+        "fp": 5,
+        "fn": 5
+      },
+      "mocodawca[].data.imie_nazwisko": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "mocodawca[].data.krs": {
+        "precision": 0.9844,
+        "recall": 0.875,
+        "f1": 0.9265,
+        "tp": 63,
+        "fp": 1,
+        "fn": 9
+      },
+      "mocodawca[].data.nazwa": {
+        "precision": 0.9571,
+        "recall": 0.8816,
+        "f1": 0.9178,
+        "tp": 67,
+        "fp": 3,
+        "fn": 9
+      },
+      "mocodawca[].data.nip": {
+        "precision": 1.0,
+        "recall": 0.8961,
+        "f1": 0.9452,
+        "tp": 69,
+        "fp": 0,
+        "fn": 8
+      },
+      "mocodawca[].data.typ": {
+        "precision": 1.0,
+        "recall": 0.9091,
+        "f1": 0.9524,
+        "tp": 70,
+        "fp": 0,
+        "fn": 7
+      },
+      "mocodawca[].podpisujacy[].imie_nazwisko": {
+        "precision": 0.8053,
+        "recall": 0.8349,
+        "f1": 0.8198,
+        "tp": 91,
+        "fp": 22,
+        "fn": 18
+      },
+      "pelnomocnicy[].imie_nazwisko": {
+        "precision": 0.9911,
+        "recall": 0.9652,
+        "f1": 0.978,
+        "tp": 111,
+        "fp": 1,
+        "fn": 4
+      },
+      "pelnomocnicy[].pesel": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "przelew_bankowy.data_operacji": {
+        "precision": 1.0,
+        "recall": 0.9857,
+        "f1": 0.9928,
+        "tp": 69,
+        "fp": 0,
+        "fn": 1
+      },
+      "przelew_bankowy.kwota": {
+        "precision": 1.0,
+        "recall": 0.9429,
+        "f1": 0.9706,
+        "tp": 66,
+        "fp": 0,
+        "fn": 4
+      },
+      "przelew_bankowy.na_rachunek": {
+        "precision": 0.9692,
+        "recall": 0.9,
+        "f1": 0.9333,
+        "tp": 63,
+        "fp": 2,
+        "fn": 7
+      },
+      "przelew_bankowy.numer_transakcji": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 64,
+        "fp": 0,
+        "fn": 0
+      },
+      "przelew_bankowy.tytul": {
+        "precision": 0.9412,
+        "recall": 0.9143,
+        "f1": 0.9275,
+        "tp": 64,
+        "fp": 4,
+        "fn": 6
+      },
+      "przelew_bankowy.z_rachunku": {
+        "precision": 0.9286,
+        "recall": 0.9286,
+        "f1": 0.9286,
+        "tp": 65,
+        "fp": 5,
+        "fn": 5
+      }
+    },
+    "coverage_by_field": {
+      "OdwolanieKIO.czynnosc_dzien": {
+        "share": 1.0,
+        "present": 70,
+        "total": 70
+      },
+      "OdwolanieKIO.data": {
+        "share": 1.0,
+        "present": 55,
+        "total": 55
+      },
+      "OdwolanieKIO.miejscowosc": {
+        "share": 0.9818,
+        "present": 54,
+        "total": 55
+      },
+      "Odwolujacy[].krs": {
+        "share": 1.0,
+        "present": 64,
+        "total": 64
+      },
+      "Odwolujacy[].nazwa": {
+        "share": 0.9857,
+        "present": 69,
+        "total": 70
+      },
+      "Odwolujacy[].nip": {
+        "share": 1.0,
+        "present": 70,
+        "total": 70
+      },
+      "Odwolujacy[].pelnomocnik.imie_nazwisko": {
+        "share": 1.0,
+        "present": 69,
+        "total": 69
+      },
+      "Odwolujacy[].pelnomocnik.mail": {
+        "share": 1.0,
+        "present": 69,
+        "total": 69
+      },
+      "Odwolujacy[].pelnomocnik.nazwa": {
+        "share": 1.0,
+        "present": 69,
+        "total": 69
+      },
+      "Odwolujacy[].regon": {
+        "share": 1.0,
+        "present": 66,
+        "total": 66
+      },
+      "Zamawiajacy[].krs": {
+        "share": 1.0,
+        "present": 58,
+        "total": 58
+      },
+      "Zamawiajacy[].nazwa": {
+        "share": 1.0,
+        "present": 74,
+        "total": 74
+      },
+      "Zamawiajacy[].nip": {
+        "share": 1.0,
+        "present": 71,
+        "total": 71
+      },
+      "Zamawiajacy[].regon": {
+        "share": 1.0,
+        "present": 66,
+        "total": 66
+      },
+      "ZamowieniePubliczne.numer_bzp": {
+        "share": 0.9811,
+        "present": 52,
+        "total": 53
+      },
+      "ZamowieniePubliczne.numer_postepowania": {
+        "share": 0.9857,
+        "present": 69,
+        "total": 70
+      },
+      "ZamowieniePubliczne.numer_ted": {
+        "share": 0.9815,
+        "present": 53,
+        "total": 54
+      },
+      "ZamowieniePubliczne.tytul": {
+        "share": 0.9286,
+        "present": 65,
+        "total": 70
+      },
+      "mocodawca[].data.imie_nazwisko": {
+        "share": 1.0,
+        "present": 5,
+        "total": 5
+      },
+      "mocodawca[].data.krs": {
+        "share": 0.9722,
+        "present": 70,
+        "total": 72
+      },
+      "mocodawca[].data.nazwa": {
+        "share": 1.0,
+        "present": 76,
+        "total": 76
+      },
+      "mocodawca[].data.nip": {
+        "share": 1.0,
+        "present": 77,
+        "total": 77
+      },
+      "mocodawca[].podpisujacy[].imie_nazwisko": {
+        "share": 1.0,
+        "present": 109,
+        "total": 109
+      },
+      "pelnomocnicy[].imie_nazwisko": {
+        "share": 1.0,
+        "present": 115,
+        "total": 115
+      },
+      "pelnomocnicy[].pesel": {
+        "share": 1.0,
+        "present": 5,
+        "total": 5
+      },
+      "przelew_bankowy.data_operacji": {
+        "share": 0.9857,
+        "present": 69,
+        "total": 70
+      },
+      "przelew_bankowy.kwota": {
+        "share": 1.0,
+        "present": 70,
+        "total": 70
+      },
+      "przelew_bankowy.na_rachunek": {
+        "share": 0.9857,
+        "present": 69,
+        "total": 70
+      },
+      "przelew_bankowy.numer_transakcji": {
+        "share": 1.0,
+        "present": 64,
+        "total": 64
+      },
+      "przelew_bankowy.tytul": {
+        "share": 0.9143,
+        "present": 64,
+        "total": 70
+      },
+      "przelew_bankowy.z_rachunku": {
+        "share": 1.0,
+        "present": 70,
+        "total": 70
+      }
+    },
+    "classification": {
+      "accuracy": 1.0,
+      "confusion": {
+        "none": {
+          "none": 16
+        },
+        "odwolanie": {
+          "odwolanie": 70
+        },
+        "pelnomocnictwo": {
+          "pelnomocnictwo": 70
+        },
+        "przelew": {
+          "przelew": 70
+        }
+      }
+    }
+  }
+}

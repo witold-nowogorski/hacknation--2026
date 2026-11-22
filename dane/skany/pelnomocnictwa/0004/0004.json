@@ -1,0 +1,27 @@
+{
+  "mocodawca": [
+    {
+      "data": {
+        "imie_nazwisko": null,
+        "krs": "9990692039",
+        "nazwa": "Arkomed Serwis spółka akcyjna",
+        "nip": "9996494661",
+        "typ": "osoba_prawna"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "Halina Baran"
+        },
+        {
+          "imie_nazwisko": "Dorota Topolska"
+        }
+      ]
+    }
+  ],
+  "pelnomocnicy": [
+    {
+      "imie_nazwisko": "Krzysztof Jodłowski",
+      "pesel": "69102340858"
+    }
+  ]
+}

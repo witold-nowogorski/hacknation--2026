@@ -1,0 +1,38 @@
+{
+  "OdwolanieKIO": {
+    "data": "2026-07-15",
+    "czynnosc_dzien": "2026-07-05",
+    "czynnosc_powod_id": 2,
+    "czynnosc_opis": "Ogłoszenie wyboru oferty",
+    "miejscowosc": "Gdańsk"
+  },
+  "Odwolujacy": [
+    {
+      "krs": "9998927009",
+      "nazwa": "Kalinex Logistyka Sp. z o.o.",
+      "nip": "9990864252",
+      "regon": "999068145",
+      "przez-pelnomocnika": 1,
+      "pelnomocnik": {
+        "imie_nazwisko": "Żaneta Olszewska",
+        "nazwa": "Sikora, Sikora i Partnerzy Kancelaria Radców Prawnych sp. p.",
+        "mail": "z.olszewska@sikora-kancelaria.example"
+      }
+    }
+  ],
+  "Zamawiajacy": [
+    {
+      "krs": null,
+      "nazwa": "Komenda Wojewódzka Państwowej Straży Pożarnej w Jarzębinie",
+      "nip": "9992208055",
+      "regon": null,
+      "prowadzacy_postepowanie": null
+    }
+  ],
+  "ZamowieniePubliczne": {
+    "numer_bzp": null,
+    "numer_postepowania": "PN/58/2026/DOS",
+    "numer_ted": "333259-2026",
+    "tytul": "Dostawa sprzętu komputerowego wraz z oprogramowaniem dla jednostek organizacyjnych Zamawiającego"
+  }
+}

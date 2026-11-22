@@ -1,0 +1,24 @@
+{
+  "mocodawca": [
+    {
+      "data": {
+        "imie_nazwisko": null,
+        "krs": "9994328029",
+        "nazwa": "Orbisol Budownictwo Sp. z o.o.",
+        "nip": "9999929154",
+        "typ": "osoba_prawna"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "Szymon Zawadzki"
+        }
+      ]
+    }
+  ],
+  "pelnomocnicy": [
+    {
+      "imie_nazwisko": "Rafał Malinowski",
+      "pesel": null
+    }
+  ]
+}

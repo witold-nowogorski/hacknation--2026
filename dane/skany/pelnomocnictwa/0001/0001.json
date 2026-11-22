@@ -1,0 +1,32 @@
+{
+  "mocodawca": [
+    {
+      "data": {
+        "imie_nazwisko": null,
+        "krs": "9991022552",
+        "nazwa": "Asterion Budownictwo sp. k.",
+        "nip": "9992956550",
+        "typ": "osoba_prawna"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "Szymon Brzozowski"
+        }
+      ]
+    }
+  ],
+  "pelnomocnicy": [
+    {
+      "imie_nazwisko": "Aleksandra Rybak",
+      "pesel": null
+    },
+    {
+      "imie_nazwisko": "Halina Jodłowska",
+      "pesel": null
+    },
+    {
+      "imie_nazwisko": "Wojciech Kaczmarek",
+      "pesel": null
+    }
+  ]
+}

@@ -1,0 +1,765 @@
+{
+  "run": {
+    "run_id": "20261122-075200_tables-none",
+    "experiment": "tables-none",
+    "pipeline": "StagedPipeline",
+    "started_at": "2026-11-22T07:52:00.493135+01:00",
+    "duration_s": 179.61,
+    "documents": 226,
+    "seconds_per_document": 0.795,
+    "dataset_id": "00876d37b058",
+    "git_commit": "b00f678",
+    "git_dirty": true
+  },
+  "config": {
+    "name": "tables-none",
+    "description": "C1: first 2 pages, no table structure: cells become text blocks; no TableFormer cost.",
+    "conversion": {
+      "max_pages": 2,
+      "document_timeout_s": 120.0,
+      "ocr_lang": [
+        "pl"
+      ],
+      "table_mode": "none",
+      "num_threads": 4
+    },
+    "classification": {
+      "pages": 2,
+      "head_chars": 300
+    },
+    "llm": null
+  },
+  "doc_types": {
+    "odwolanie": {
+      "name": "odwolanie",
+      "classification": {
+        "min_score": 4.0,
+        "keywords": {
+          "odwołujący": 2.0,
+          "prezes krajowej izby odwoławczej": 2.0,
+          "wnoszę": 1.0,
+          "art. 513": 1.0,
+          "odwołanie": 1.0,
+          "zamawiający": 1.0
+        },
+        "head_keywords": {
+          "sygn. akt": -5.0,
+          "wyrok": -5.0,
+          "postanowienie": -5.0
+        }
+      },
+      "output_schema": {
+        "OdwolanieKIO": {
+          "data": "date",
+          "czynnosc_dzien": "date",
+          "czynnosc_powod_id": "reason_id",
+          "czynnosc_opis": "reason_description",
+          "miejscowosc": "text"
+        },
+        "Odwolujacy": [
+          {
+            "krs": "krs",
+            "nazwa": "text",
+            "nip": "nip",
+            "regon": "regon",
+            "przez-pelnomocnika": "flag",
+            "pelnomocnik": {
+              "imie_nazwisko": "person_name",
+              "nazwa": "text",
+              "mail": "email"
+            }
+          }
+        ],
+        "Zamawiajacy": [
+          {
+            "krs": "krs",
+            "nazwa": "text",
+            "nip": "nip",
+            "regon": "regon",
+            "prowadzacy_postepowanie": "flag"
+          }
+        ],
+        "ZamowieniePubliczne": {
+          "numer_bzp": "bzp",
+          "numer_postepowania": "text",
+          "numer_ted": "ted",
+          "tytul": "text"
+        }
+      }
+    },
+    "pelnomocnictwo": {
+      "name": "pelnomocnictwo",
+      "classification": {
+        "min_score": 3.0,
+        "keywords": {
+          "pełnomocnictwo": 2.0,
+          "mocodawca": 2.0,
+          "ustanawiam": 2.0,
+          "udzielam": 1.0,
+          "upoważni": 1.0,
+          "umocowan": 1.0,
+          "do reprezentowania": 1.0,
+          "pełnomocnik": 1.0,
+          "niżej podpisany": 1.0
+        },
+        "head_keywords": {}
+      },
+      "output_schema": {
+        "mocodawca": [
+          {
+            "data": {
+              "imie_nazwisko": "person_name",
+              "krs": "krs",
+              "nazwa": "text",
+              "nip": "nip",
+              "typ": "party_type"
+            },
+            "podpisujacy": [
+              {
+                "imie_nazwisko": "person_name"
+              }
+            ]
+          }
+        ],
+        "pelnomocnicy": [
+          {
+            "imie_nazwisko": "person_name",
+            "pesel": "pesel"
+          }
+        ]
+      }
+    },
+    "przelew": {
+      "name": "przelew",
+      "classification": {
+        "min_score": 3.0,
+        "keywords": {
+          "przelew": 2.0,
+          "potwierdzenie": 1.0,
+          "rachunek": 1.0,
+          "kwota": 1.0,
+          "pln": 1.0,
+          "zleceni": 1.0,
+          "odbiorc": 1.0,
+          "nadawc": 1.0,
+          "kontrahent": 1.0,
+          "data operacji": 1.0,
+          "data transakcji": 1.0
+        },
+        "head_keywords": {}
+      },
+      "output_schema": {
+        "przelew_bankowy": {
+          "data_operacji": "date",
+          "kwota": "amount",
+          "na_rachunek": "account",
+          "numer_transakcji": "text",
+          "tytul": "text",
+          "z_rachunku": "account"
+        }
+      }
+    }
+  },
+  "scores": {
+    "documents": 226,
+    "strict": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 2341
+    },
+    "normalised": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 2341
+    },
+    "coverage": {
+      "share": 0.9902,
+      "present": 2026,
+      "total": 2046
+    },
+    "conversion_s": 0.82,
+    "by_subset": {
+      "synthetic": {
+        "documents": 184,
+        "classification_accuracy": 1.0,
+        "strict": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 2032
+        },
+        "coverage": {
+          "odwolanie": {
+            "share": 0.9961,
+            "present": 1024,
+            "total": 1028
+          },
+          "pelnomocnictwo": {
+            "share": 1.0,
+            "present": 392,
+            "total": 392
+          },
+          "przelew": {
+            "share": 1.0,
+            "present": 360,
+            "total": 360
+          }
+        },
+        "conversion_s": 0.36,
+        "max_conversion_s": 1.72
+      },
+      "negatives": {
+        "documents": 12,
+        "classification_accuracy": 1.0,
+        "strict": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "coverage": {},
+        "conversion_s": 1.73,
+        "max_conversion_s": 5.21
+      },
+      "scans": {
+        "documents": 30,
+        "classification_accuracy": 1.0,
+        "strict": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 309
+        },
+        "coverage": {
+          "odwolanie": {
+            "share": 0.9586,
+            "present": 139,
+            "total": 145
+          },
+          "pelnomocnictwo": {
+            "share": 0.9701,
+            "present": 65,
+            "total": 67
+          },
+          "przelew": {
+            "share": 0.8519,
+            "present": 46,
+            "total": 54
+          }
+        },
+        "conversion_s": 3.3,
+        "max_conversion_s": 6.9
+      }
+    },
+    "by_doc_type": {
+      "none": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "odwolanie": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1391
+      },
+      "pelnomocnictwo": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 536
+      },
+      "przelew": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 414
+      }
+    },
+    "by_field": {
+      "OdwolanieKIO.czynnosc_dzien": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "OdwolanieKIO.czynnosc_opis": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "OdwolanieKIO.czynnosc_powod_id": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "OdwolanieKIO.data": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 55
+      },
+      "OdwolanieKIO.miejscowosc": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 55
+      },
+      "Odwolujacy[].krs": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 64
+      },
+      "Odwolujacy[].nazwa": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "Odwolujacy[].nip": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "Odwolujacy[].pelnomocnik.imie_nazwisko": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 69
+      },
+      "Odwolujacy[].pelnomocnik.mail": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 69
+      },
+      "Odwolujacy[].pelnomocnik.nazwa": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 69
+      },
+      "Odwolujacy[].przez-pelnomocnika": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "Odwolujacy[].regon": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 66
+      },
+      "Zamawiajacy[].krs": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 58
+      },
+      "Zamawiajacy[].nazwa": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 74
+      },
+      "Zamawiajacy[].nip": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 71
+      },
+      "Zamawiajacy[].prowadzacy_postepowanie": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 8
+      },
+      "Zamawiajacy[].regon": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 66
+      },
+      "ZamowieniePubliczne.numer_bzp": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 53
+      },
+      "ZamowieniePubliczne.numer_postepowania": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "ZamowieniePubliczne.numer_ted": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 54
+      },
+      "ZamowieniePubliczne.tytul": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "mocodawca[].data.imie_nazwisko": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 5
+      },
+      "mocodawca[].data.krs": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 72
+      },
+      "mocodawca[].data.nazwa": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 76
+      },
+      "mocodawca[].data.nip": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 77
+      },
+      "mocodawca[].data.typ": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 77
+      },
+      "mocodawca[].podpisujacy[].imie_nazwisko": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 109
+      },
+      "pelnomocnicy[].imie_nazwisko": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 115
+      },
+      "pelnomocnicy[].pesel": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 5
+      },
+      "przelew_bankowy.data_operacji": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "przelew_bankowy.kwota": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "przelew_bankowy.na_rachunek": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "przelew_bankowy.numer_transakcji": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 64
+      },
+      "przelew_bankowy.tytul": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      },
+      "przelew_bankowy.z_rachunku": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 70
+      }
+    },
+    "coverage_by_field": {
+      "OdwolanieKIO.czynnosc_dzien": {
+        "share": 1.0,
+        "present": 70,
+        "total": 70
+      },
+      "OdwolanieKIO.data": {
+        "share": 1.0,
+        "present": 55,
+        "total": 55
+      },
+      "OdwolanieKIO.miejscowosc": {
+        "share": 0.9818,
+        "present": 54,
+        "total": 55
+      },
+      "Odwolujacy[].krs": {
+        "share": 1.0,
+        "present": 64,
+        "total": 64
+      },
+      "Odwolujacy[].nazwa": {
+        "share": 0.9857,
+        "present": 69,
+        "total": 70
+      },
+      "Odwolujacy[].nip": {
+        "share": 1.0,
+        "present": 70,
+        "total": 70
+      },
+      "Odwolujacy[].pelnomocnik.imie_nazwisko": {
+        "share": 1.0,
+        "present": 69,
+        "total": 69
+      },
+      "Odwolujacy[].pelnomocnik.mail": {
+        "share": 1.0,
+        "present": 69,
+        "total": 69
+      },
+      "Odwolujacy[].pelnomocnik.nazwa": {
+        "share": 1.0,
+        "present": 69,
+        "total": 69
+      },
+      "Odwolujacy[].regon": {
+        "share": 1.0,
+        "present": 66,
+        "total": 66
+      },
+      "Zamawiajacy[].krs": {
+        "share": 1.0,
+        "present": 58,
+        "total": 58
+      },
+      "Zamawiajacy[].nazwa": {
+        "share": 1.0,
+        "present": 74,
+        "total": 74
+      },
+      "Zamawiajacy[].nip": {
+        "share": 1.0,
+        "present": 71,
+        "total": 71
+      },
+      "Zamawiajacy[].regon": {
+        "share": 1.0,
+        "present": 66,
+        "total": 66
+      },
+      "ZamowieniePubliczne.numer_bzp": {
+        "share": 0.9811,
+        "present": 52,
+        "total": 53
+      },
+      "ZamowieniePubliczne.numer_postepowania": {
+        "share": 0.9857,
+        "present": 69,
+        "total": 70
+      },
+      "ZamowieniePubliczne.numer_ted": {
+        "share": 0.9815,
+        "present": 53,
+        "total": 54
+      },
+      "ZamowieniePubliczne.tytul": {
+        "share": 0.9286,
+        "present": 65,
+        "total": 70
+      },
+      "mocodawca[].data.imie_nazwisko": {
+        "share": 1.0,
+        "present": 5,
+        "total": 5
+      },
+      "mocodawca[].data.krs": {
+        "share": 0.9722,
+        "present": 70,
+        "total": 72
+      },
+      "mocodawca[].data.nazwa": {
+        "share": 1.0,
+        "present": 76,
+        "total": 76
+      },
+      "mocodawca[].data.nip": {
+        "share": 1.0,
+        "present": 77,
+        "total": 77
+      },
+      "mocodawca[].podpisujacy[].imie_nazwisko": {
+        "share": 1.0,
+        "present": 109,
+        "total": 109
+      },
+      "pelnomocnicy[].imie_nazwisko": {
+        "share": 1.0,
+        "present": 115,
+        "total": 115
+      },
+      "pelnomocnicy[].pesel": {
+        "share": 1.0,
+        "present": 5,
+        "total": 5
+      },
+      "przelew_bankowy.data_operacji": {
+        "share": 0.9857,
+        "present": 69,
+        "total": 70
+      },
+      "przelew_bankowy.kwota": {
+        "share": 1.0,
+        "present": 70,
+        "total": 70
+      },
+      "przelew_bankowy.na_rachunek": {
+        "share": 0.9857,
+        "present": 69,
+        "total": 70
+      },
+      "przelew_bankowy.numer_transakcji": {
+        "share": 1.0,
+        "present": 64,
+        "total": 64
+      },
+      "przelew_bankowy.tytul": {
+        "share": 0.9143,
+        "present": 64,
+        "total": 70
+      },
+      "przelew_bankowy.z_rachunku": {
+        "share": 1.0,
+        "present": 70,
+        "total": 70
+      }
+    },
+    "classification": {
+      "accuracy": 1.0,
+      "confusion": {
+        "none": {
+          "none": 16
+        },
+        "odwolanie": {
+          "odwolanie": 70
+        },
+        "pelnomocnictwo": {
+          "pelnomocnictwo": 70
+        },
+        "przelew": {
+          "przelew": 70
+        }
+      }
+    }
+  }
+}

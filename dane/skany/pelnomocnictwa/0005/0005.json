@@ -1,0 +1,32 @@
+{
+  "mocodawca": [
+    {
+      "data": {
+        "imie_nazwisko": null,
+        "krs": "9991919038",
+        "nazwa": "Medicor IT Solutions S.A.",
+        "nip": "9992326754",
+        "typ": "osoba_prawna"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "Zbigniew Cieślak"
+        }
+      ]
+    }
+  ],
+  "pelnomocnicy": [
+    {
+      "imie_nazwisko": "Grzegorz Kaczmarek",
+      "pesel": null
+    },
+    {
+      "imie_nazwisko": "Katarzyna Sikora",
+      "pesel": null
+    },
+    {
+      "imie_nazwisko": "Karolina Baran",
+      "pesel": null
+    }
+  ]
+}

@@ -1,0 +1,196 @@
+# Odwołanie do Prezesa Krajowej Izby Odwoławczej.
+# Keywords are searched on the first pages, ignoring case, whitespace and Polish diacritics.
+
+[classification]
+min_score = 4
+
+[classification.keywords]
+"odwołujący" = 2
+"prezes krajowej izby odwoławczej" = 2   # addressee; KIO rulings say "Prezesa", which does not match
+"wnoszę" = 1
+"art. 513" = 1                           # legal basis of an appeal (Pzp)
+"odwołanie" = 1
+"zamawiający" = 1
+
+# Only at the top of the document: KIO rulings start with these and name the same parties, while
+# real appeals cite rulings ("wyrok KIO ..., sygn. akt ...") further down, so anywhere else they
+# would reject genuine appeals.
+[classification.head_keywords]
+"sygn. akt" = -5
+"wyrok" = -5
+"postanowienie" = -5
+
+# --- Sections and field rules (see SectionRule / FieldRule in src/doc_types.py) ---------------------
+# The header names the parties ("Odwołujący:", "Zamawiający:", in either order), the procurement
+# ("dotyczy: ... pn. "<tytuł>", nr referencyjny ...") and the place and date of the letter. The
+# contested action and its date come from the sentence "Zamawiający w dniu <data> ..."; the reason
+# code is the earliest matching action pattern there, falling back to the list of contested actions.
+
+[sections.odwolujacy]
+start = ['odwolujac\w*\s*:']
+end = ['zamawiaj\w*\s*:', 'dotyczy', '^\s*odwolanie\s*$', '\bwnosz']
+max_chars = 1500
+
+[sections.zamawiajacy]
+start = ['zamawiaj\w*\s*:']
+end = ['odwolujac\w*\s*:', 'dotyczy', '^\s*odwolanie\s*$', '\bwnosz']
+max_chars = 1500
+
+[sections.header]
+max_chars = 4000
+
+[sections.action]  # one sentence: "Zamawiający w dniu <data> <czynność>."
+end = ['\.\s+(?:zarzut|uprzednio|wczesniej|nastepnie|pozniej|w zwiazku|odwolujac|tym samym|zatem|wobec|informacj)', '\n']
+start = ['zamawiaj\w* (?:\w+ ){0,6}?w dniu', 'czynnosc\w* .{0,80}w dniu', 'przekazan\w* .{0,40}w dniu', 'poinformowan\w* pismem z']
+max_chars = 220
+
+[sections.contested]
+start = ['wobec (?:niezgodn\w* )?czynnosci', 'wobec tresci', 'odwolanie (?:od|wobec)', 'polegajac\w* na\s*:', 'zarzut\w* nr 1', 'zarzuca\w*']
+max_chars = 500
+
+[fields."OdwolanieKIO.data"]
+sections = ["header"]
+labels = ['\b[a-z][a-z-]+,\s*(?:dnia\s*)?(?=\d)', '^\s*(?=\d{1,2}[./-]\d{1,2}[./-]\d{4}\s*r?\.?\s*[a-z])']
+window = 40
+
+[fields."OdwolanieKIO.miejscowosc"]
+sections = ["header"]
+pattern = '''(?<![\w-])((?:(?:Nowy|Nowa|Nowe|Stary|Stara|Zielona|Jelenia|Ruda|Biała|Gorzów|Kędzierzyn|Ostrów|Piotrków|Tomaszów|Grodzisk|Mińsk|Kamienna|Dąbrowa)[ \t])?[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+(?:-[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)?),\s*(?:dnia\s*)?\d|\d{4}\s*r?\.?[ \t]*((?:(?:Nowy|Nowa|Nowe|Stary|Stara|Zielona|Jelenia|Ruda|Biała|Gorzów|Kędzierzyn|Ostrów|Piotrków|Tomaszów|Grodzisk|Mińsk|Kamienna|Dąbrowa)[ \t])?[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+(?:-[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)?),'''
+
+[fields."OdwolanieKIO.czynnosc_dzien"]
+sections = ["action", "contested"]
+
+[fields."OdwolanieKIO.czynnosc_powod_id"]
+sections = ["action", "contested"]
+
+[fields."OdwolanieKIO.czynnosc_powod_id".classify]  # the earliest match wins: omissions are matched before actions
+10 = ['zaniecha\w* uniewazni', 'nie uniewazni']
+9 = ['uniewazni\w*']
+7 = ['zaniecha\w* odrzuceni', 'nie odrzuci']
+8 = ['zaniecha\w* wykluczeni', 'nie wykluczy']
+1 = ['odrzuc\w* ofert', 'odrzuceni\w*']
+3 = ['wyklucz\w*']
+2 = ['wyb[oo]r\w* ofert', 'wybra\w* ofert', 'najkorzystniejsz']
+6 = ['(?:odpowiedz|wyjasnieni)\w* .{0,30}(?:swz|specyfikacji)']
+5 = ['(?:zmodyfikowa|zmian|modyfikac)\w* .{0,20}(?:swz|specyfikacji)']
+12 = ['projektowan\w* postanowie\w* umowy', 'wz[oo]r\w* umowy']
+11 = ['opis\w* przedmiotu zamowienia', '\bopz\b']
+4 = ['(?:opublikowa|publikac|tresc)\w* .{0,20}(?:swz|specyfikacj)', 'specyfikacj\w* warunkow zamowienia', '\bswz\b']
+
+[fields."OdwolanieKIO.czynnosc_opis"]
+lookup = { source = "OdwolanieKIO.czynnosc_powod_id", table = { 1 = "Decyzja o odrzuceniu oferty", 2 = "Ogłoszenie wyboru oferty", 3 = "Decyzja o wykluczeniu wykonawcy", 4 = "Publikacja specyfikacji warunków zamówienia (SWZ)", 5 = "Modyfikacja treści SWZ", 6 = "Odpowiedzi/wyjaśnienia do SWZ", 7 = "Zaniechanie odrzucenia oferty", 8 = "Zaniechanie wykluczenia wykonawcy", 9 = "Decyzja o unieważnieniu postępowania", 10 = "Zaniechanie unieważnienia postępowania", 11 = "Opis przedmiotu zamówienia (OPZ)", 12 = "Projektowane postanowienia umowy" } }
+
+[fields."Odwolujacy[].nazwa"]
+sections = ["odwolujacy"]
+skip = ['konsorcj\w*[^\n]*\n\s*(?:1\)\s*)?(?:lider\w*(?:\s+konsorcj\w*)?\s*:?)?\s*']  # a consortium: its leader
+cut = ['\s*,?\s+(?:ul|al|pl|os)\.', '\s*\d{2}-\d{3}', '(?:^|\s+)(?:krs|nip|regon|tel|fax|e-?mail|adres)\b', ',?\s+z siedziba', '\s+reprezentowan', '\s*\(']
+
+[fields."Odwolujacy[].krs"]
+sections = ["odwolujacy"]
+labels = ['krs\b']
+window = 40
+
+[fields."Odwolujacy[].nip"]
+sections = ["odwolujacy"]
+labels = ['nip\b']
+window = 40
+
+[fields."Odwolujacy[].regon"]
+sections = ["odwolujacy"]
+labels = ['regon\b']
+window = 40
+
+[fields."Odwolujacy[].przez-pelnomocnika"]
+sections = ["odwolujacy"]
+classify = { 1 = ['reprezentowan\w* przez', 'pelnomocni'] }
+default = "0"
+
+[fields."Odwolujacy[].pelnomocnik.imie_nazwisko"]
+sections = ["odwolujacy"]
+labels = ['reprezentowan\w* przez(?:\s+p\w+nomocnika)?\s*:?']
+window = 150
+
+[fields."Odwolujacy[].pelnomocnik.nazwa"]
+sections = ["odwolujacy"]
+labels = ['adres do korespondencji\s*:?']
+cut = ['\s*,?\s+(?:ul|al|pl|os)\.', '\s*\d{2}-\d{3}', '\s+tel\b', ',?\s+e-?mail']
+
+[fields."Odwolujacy[].pelnomocnik.mail"]
+sections = ["odwolujacy"]
+labels = ['adres do korespondencji', 'reprezentowan\w* przez', 'e-?mail']
+window = 500
+
+[fields."Zamawiajacy[].nazwa"]
+sections = ["zamawiajacy"]
+cut = ['\s*,?\s+(?:ul|al|pl|os)\.', '\s*\d{2}-\d{3}', '(?:^|\s+)(?:krs|nip|regon|tel|fax|e-?mail|adres)\b', ',?\s+z siedziba', '\s*\(', '\s+e-?mail']
+
+[fields."Zamawiajacy[].krs"]
+sections = ["zamawiajacy"]
+labels = ['krs\b']
+window = 40
+
+[fields."Zamawiajacy[].nip"]
+sections = ["zamawiajacy"]
+labels = ['nip\b']
+window = 40
+
+[fields."Zamawiajacy[].regon"]
+sections = ["zamawiajacy"]
+labels = ['regon\b']
+window = 40
+
+[fields."ZamowieniePubliczne.numer_bzp"]
+sections = ["header"]
+
+[fields."ZamowieniePubliczne.numer_ted"]
+sections = ["header"]
+
+[fields."ZamowieniePubliczne.numer_postepowania"]
+sections = ["header"]
+labels = ['nr referencyjny(?: sprawy)?', 'numer referencyjny', 'znak sprawy', 'numer postepowania', 'nr postepowania',
+          'postepowanie nr', 'nr sprawy']
+pattern = '\b(?=[\w./-]*\d)[A-Z0-9][\w./-]*[\w/-]'
+window = 80
+
+[fields."ZamowieniePubliczne.tytul"]
+sections = ["header"]
+labels = ['\bpn\.?', 'pod nazwa', 'nazwa zamowienia', 'nazwa postepowania']
+cut = ['["”“]', ',\s*(?:nr|numer|znak|prowadzon|ogloszen)', '\s+nr referencyjny']
+window = 400
+
+[sections.first_charge]
+start = ['zarzut\w* nr 1\b', 'zarzut\w* 1\b']
+max_chars = 400
+
+# --- LLM tasks (see LlmTaskRule in src/doc_types.py); used only by pipelines with an LLM ----------
+
+[[llm_tasks]]
+name = "contested_action"
+fields = ["OdwolanieKIO.czynnosc_powod_id"]
+sections = ["action", "contested"]  # the action sentence decides; the list of contested actions if there is none
+context_chars = 1500
+mode = "decide"
+prompt = """Jesteś prawnikiem zamówień publicznych. Poniżej fragment odwołania do Krajowej Izby Odwoławczej.
+Fragment opisuje zaskarżoną czynność lub zaniechanie zamawiającego. Przypisz je do jednej kategorii i podaj jej kod czynnosc_powod_id:
+1 = Decyzja o odrzuceniu oferty (zamawiający odrzucił ofertę, zwykle odwołującego)
+2 = Ogłoszenie wyboru oferty (wybór oferty najkorzystniejszej, ocena ofert)
+3 = Decyzja o wykluczeniu wykonawcy (zamawiający wykluczył wykonawcę)
+4 = Publikacja specyfikacji warunków zamówienia (SWZ) – zarzuty wobec treści SWZ, ogłoszenia lub warunków udziału
+5 = Modyfikacja treści SWZ (zarzut dotyczy zmiany SWZ)
+6 = Odpowiedzi/wyjaśnienia do SWZ (odpowiedzi na pytania wykonawców)
+7 = Zaniechanie odrzucenia oferty (zamawiający NIE odrzucił cudzej oferty, choć powinien)
+8 = Zaniechanie wykluczenia wykonawcy (zamawiający NIE wykluczył wykonawcy, choć powinien)
+9 = Decyzja o unieważnieniu postępowania
+10 = Zaniechanie unieważnienia postępowania (zamawiający NIE unieważnił postępowania)
+11 = Opis przedmiotu zamówienia (OPZ)
+12 = Projektowane postanowienia umowy
+Jeśli fragment nie pozwala ustalić kodu, zwróć null."""
+
+[[llm_tasks]]
+name = "nominative_names"
+kind = "nominative"
+fields = ["Odwolujacy[].pelnomocnik.imie_nazwisko"]
+when = ['(?:ego|emu|owi|iem|ą|ę|iej|skiej|ckiej)\b']
+prompt = """Podane imiona i nazwiska mogą być odmienione (np. „Jana Kowalskiego”, „Annę Nowak”).
+Zapisz każde w mianowniku („Jan Kowalski”, „Anna Nowak”), w tej samej kolejności, bez tytułów i funkcji.
+Zwróć listę names o tej samej długości."""

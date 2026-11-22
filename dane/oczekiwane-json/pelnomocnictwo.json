@@ -3,7 +3,7 @@
   "mocodawca": [
     {
       "data": {
-        // Imię i nazwisko mocodawcy, jeśli jest osobą fizyczną.
+        // Imię i nazwisko mocodawcy w mianowniku, jeśli jest osobą fizyczną.
         // W przypadku osoby prawnej: null.
         "imie_nazwisko": null,
 

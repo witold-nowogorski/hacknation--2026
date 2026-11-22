@@ -1,177 +1,104 @@
 # Odwołania2json
 
-**Od dokumentów do danych. Inteligentna transformacja odwołań KIO do modelu JSON**
+Converts each PDF of a KIO appeal case into JSON in the UZP format: PDF → text (Docling, OCR for scans) → document type (`odwolanie`, `pelnomocnictwo`, `przelew`, else `{}`) → fields (config rules + a small LLM) → validated JSON with the source of every value.
 
-# Krótki opis wyzwania
-
-Każdego roku do systemu zamówień publicznych trafiają tysiące dokumentów zawierających kluczowe informacje o postępowaniach, wykonawcach, pełnomocnikach i czynnościach zamawiających. Najczęściej są to dokumenty tekstowe z kluczowymi, jednak ułożonymi w przeróżny sposób, informacjami z reguły na pierwszych trzech stronach. Celem wyzwania jest stworzenie rozwiązania, które automatycznie zamieni wielodokumentową sprawę administracyjną w spójny, ustrukturyzowany model danych JSON gotowy do dalszego wykorzystania przez systemy informatyczne administracji publicznej.
-
-# 1. Wprowadzenie
-
-Urząd Zamówień Publicznych odpowiada za funkcjonowanie systemu zamówień publicznych w Polsce oraz wspiera uczestników rynku w prawidłowym stosowaniu przepisów prawa. Jednym z elementów tego systemu są postępowania odwoławcze prowadzone przed Krajową Izbą Odwoławczą.
-
-Sprawa odwoławcza nie jest pojedynczym dokumentem. Stanowi zbiór wielu powiązanych ze sobą dokumentów zawierających informacje o wykonawcach, zamawiających, pełnomocnikach, postępowaniach, płatnościach, czynnościach procesowych i innych elementach wymagających dalszego przetwarzania.
-
-Obecnie większość takich dokumentów występuje w postaci plików PDF o zróżnicowanej strukturze. Część z nich powstaje elektronicznie, część jest wynikiem skanowania dokumentów papierowych. Informacje niezbędne do dalszej obsługi sprawy są rozproszone pomiędzy wieloma dokumentami i często zapisane w różny sposób.
-
-Dla człowieka zrozumienie takiej dokumentacji jest stosunkowo proste. Dla systemów informatycznych stanowi jednak duże wyzwanie. Aby możliwa była automatyzacja dalszych procesów, dane muszą zostać najpierw przekształcone do postaci ustrukturyzowanej.
-
-W praktyce oznacza to konieczność przejścia od modelu:
-
-**wiele dokumentów PDF → analiza treści → identyfikacja informacji → model danych JSON**
-
-Wyzwanie dotyczy zatem budowy rozwiązania, które pozwoli automatycznie przekształcać wielodokumentowe sprawy administracyjne w kanoniczny model danych możliwy do dalszego wykorzystania przez systemy administracji publicznej.
-
-Najciekawsze rozwiązania mają szansę stać się podstawą pilotażowych wdrożeń realizowanych przez Urząd Zamówień Publicznych.
-
-# 2. Wyzwanie
-
-Zaprojektuj i zaimplementuj rozwiązanie, które:
-
-1.  przyjmie dokument PDF składający się na odwołanie: dokument z treścią odwołania, pełnomocnictwo, dokument potwierdzenia przelewu
-2.  rozpozna rodzaj dokumentu
-3.  wyodrębni informacje biznesowe istotne dla danego typu dokumentu,
-4.  wygeneruje JSON dla każdego dokumentu zgodny z https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026/blob/main/oczekiwane-json
-
-Szczegółowa struktura danych:
-https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026/blob/main/oczekiwane-json/odwolanie.json
-
-zestawy treningowe:
-https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026/blob/main/dane
-
-# 3. Oczekiwany rezultat
-
-Oczekiwanym rezultatem jest działająca aplikacja ładująca plik PDF i zwracająca pliki JSON w ustalonym formacie i strukturze.
-
-Rozwiązanie powinno zawierać:
-
-### Moduł przetwarzania dokumentów
-
-Odpowiedzialny za:
-
-- analizę dokumentów,
-
-- klasyfikację dokumentów,
-
-- ekstrakcję informacji,
-
-- budowę modelu danych.
-
-### Interfejs wykonawczy
-
-Interfejs umożliwiający uruchomienie działania aplikacji poprzez CLI, wrapper script (np. plik ```start.bat```), lub inne analogiczne rozwiązanie.
-
-Dodanie do aplikacji GUI będzie dodatkowo punktowane, ale nie jest wymagane. Istotniejsza jest skuteczność identyfikacji informacji.
-
-### Foldery input/output
-
-Foldery o nazwie ```input``` oraz ```output```, znajdujące się w folderze głównym aplikacji. Folder ```input``` użyty zostanie do przekazywania analizowanych plików do aplikacji, podczas gdy folder ```output``` zawierać będzie wynikowe pliki JSON.
-
-### Wynik działania
-
-Pliki JSON w folderze ```./output```, ułożone w strukturze drzewa, gdzie każdy wynikowy **JSON nazwany jest tak samo jak plik z katalogu input któremu odpowiada**:
-
-```
-│output
-├── case1
-│   ├── odwolanie_nr_1.json
-│   ├── pelnomocnictwo_nr_1.json
-│   ├── pelnomocnictwo_nr_2.json
-│   └── przelew_nr_1.json
-├── case2
-│   ├── odwolanie_nr_2.json
-│   ├── pelnomocnictwo_nr_3.json
-│   └── przelew_nr_2.json
-├── case3
-...
-```
-```
-│input
-├── case1
-│   ├── odwolanie_nr_1.pdf
-│   ├── pelnomocnictwo_nr_1.pdf
-│   ├── pelnomocnictwo_nr_2.pdf
-│   └── przelew_nr_1.pdf
-├── case2
-│   ├── odwolanie_nr_2.pdf
-│   ├── pelnomocnictwo_nr_3.pdf
-│   └── przelew_nr_2.pdf
-├── case3
-...
+```mermaid
+flowchart LR
+    PDF["input/**/*.pdf"] --> T["Text<br/>Docling + RapidOCR"]
+    T --> C{"Classify<br/>keywords"}
+    C -- none --> E["{}"]
+    C -- type --> R["Rules<br/>labels, regexes"]
+    R --> L["LLM tasks<br/>Bielik-11B"]
+    L --> M["Pydantic model<br/>from schema.json"]
+    M --> O["output/**/*.json"]
+    M --> TR["traces/: source of each value"]
+    CFG[("config/doc_types/*")] -.-> C & R & L & M
 ```
 
-# 4. Wymagania formalne
+## Quickstart
 
-Projekt przesyłany do oceny powinien zawierać:
+Python 3.13+, CPU only. The LLM runs over an EU-hosted API (PSNC, Poznań).
 
-- tytuł projektu,
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+echo "LLM_API_KEY=<key>" > .env
+python -m src.run
+```
 
-- Link do GitHub działającego prototypu umożliwiający wgranie dokumentów i odczytanie rezultatów ekstrakcji informacji.
+- First run downloads Docling models (~0.7 GB) into `models/`.
+- No `LLM_API_KEY`: the LLM step is skipped with a warning; rules fill every field (F1 0.950 vs 0.954).
 
-Dodatkowo uczestnicy mogą dostarczyć:
+## Usage
 
-- repozytorium projektu,
+### Batch (challenge mode)
 
-- dokumentację techniczną w tym opis wykorzystanego LLM,
+```
+input/case1/odwolanie_nr_1.pdf   →   output/case1/odwolanie_nr_1.json
+input/case1/scan.pdf             →   output/case1/scan.json     ({} if not a known type)
+```
 
-- wyniki własnych testów jakości.
+Any folder layout; non-PDF files are skipped. Settings are constants in `src/run.py` (`MODE`, `INPUT_DIR`, `OUTPUT_DIR`, `RUN_EXPERIMENT`).
 
-# 5. Wymagania techniczne
+### HTTP API
 
-Rozwiązanie musi:
+```bash
+python -m uvicorn src.api:app --port 8000      # Swagger: http://localhost:8000/docs
+curl -F "files=@input/case1/odwolanie.pdf" "http://localhost:8000/documents?experiment=hybrid-v1"
+```
 
-- być opracowane w języku **Python 3.13+**
-  
-- zawierać plik ```requirements.txt``` pozwalający na szybkie zainstalowanie pozostałych zależności projektu (np. poprzez ```pip install```)
+| Endpoint | Returns |
+|---|---|
+| `GET /health` | `{"status": "ok"}` |
+| `GET /experiments` | pipeline variants (`hybrid-v1` default, `rules-v1` = no LLM) |
+| `POST /documents` | per file: `doc_type`, `data` (output JSON), `classification_scores`, `sources` (provenance), `error` |
 
-- wykorzystywać wyłącznie komponenty open source (w tym otwarto-źródłowe modele językowe),
+Uploads are processed in a temp folder; nothing is written to `output/`.
 
-- umożliwiać uruchomienie w środowisku lokalnym (on-premise) bez GPU (LLM po API).
+### Web UI
 
-Szczególnie premiowane będą rozwiązania:
+```bash
+python -m streamlit run src/web_app.py         # http://localhost:8501, needs the API running
+```
 
-- umożliwiające konfigurację nowych klas dokumentów bez modyfikacji kodu źródłowego (jedynie przez pliki konfiguracyjne),
+Upload PDFs, inspect JSON and value sources, download JSON or ZIP.
 
-- wspierające transparentność procesu ekstrakcji danych.
+Example: `dane/przyklad_01/przelew.pdf` →
 
-# 6. Sposób testowania i walidacji
+```json
+{
+  "przelew_bankowy": {
+    "data_operacji": "2026-03-21",
+    "kwota": 200.0,
+    "na_rachunek": "68438223049992295262834736",
+    "numer_transakcji": "CEN2604016344389",
+    "tytul": "opłata skarbowa od pełnomocnictwa dla Aleksandra Marciniak i Jolanta Zajkowski w postępowaniu przed KIO w przetargu ZS.791.2026 CEN2604016344389",
+    "z_rachunku": "05470680287581539721455024"
+  }
+}
+```
 
-Ocena zostanie przeprowadzona na dwóch zbiorach danych:
+## Quality
 
-### Zbiór treningowy
+226 organiser documents (184 digital, 30 scans, 12 negatives), strict field-level F1. Report: `eval/reports/20261122-084518_hybrid-v1.json`.
 
-Udostępniony uczestnikom podczas realizacji wyzwania dostępny w katalogu dane. Zbiór danych zawiera też kategorie dokumentów, które NIE powinny być zidentyfikowane (zwrócić pusty plik `.json`).
+| Experiment | F1 | Precision | Recall | Digital | Scans | Classification |
+|---|---|---|---|---|---|---|
+| `rules-v1` (no LLM) | 0.950 | 0.967 | 0.934 | 0.969 | 0.822 | 100% |
+| **`hybrid-v1`** (rules + Bielik-11B) | **0.954** | 0.970 | 0.938 | 0.973 | 0.822 | 100% |
 
-### Zbiór testowy
+Details per type and field: [docs/evaluation.md](docs/evaluation.md).
 
-Nieudostępniany uczestnikom.
+## Documentation
 
-Zbiór testowy będzie zawierał kompletne sprawy administracyjne przygotowane przez organizatora.
+| File | Contents |
+|---|---|
+| [walkthrough.ipynb](walkthrough.ipynb) | step-by-step walkthrough on real documents with evaluation results (saved with outputs; run: `python -m notebook walkthrough.ipynb`) |
+| [docs/architecture.md](docs/architecture.md) | stages, data flow, provenance, design decisions |
+| [docs/extensibility.md](docs/extensibility.md) | adding a document type or field with config only |
+| [docs/infrastructure.md](docs/infrastructure.md) | components and licences, hardware, network, environment |
+| [docs/evaluation.md](docs/evaluation.md) | F1 method, how to run evaluation, results |
+| [docs/solution_overview.md](docs/solution_overview.md) | one-page pitch |
+| [CLAUDE.md](CLAUDE.md) | coding rules for contributors and AI agents |
 
-Wyniki wygenerowane przez rozwiązanie zostaną porównane z zestawem danych referencyjnych przygotowanym przez ekspertów merytorycznych.
-
-Podstawową miarą jakości będzie [wskaźnik F1](https://en.wikipedia.org/wiki/F-score).
-
-## Parametry maszyny na której będą testowane rozwiązania
-Będzie to laptop biurowy - 16GB RAM i Intel i7. Bez GPU. To oznacza, że dostarczone rozwiązanie, jeśli korzysta z LLM to powinno korzystać z API i być dostarczone z kluczem API. Obiecujemy nie wykorzystywać w innym celu niż proces testowy. API musi być świadczone przez firmę i z serwerów znajdujących się w EU/EOG.
-
-# 7. Kryteria oceny
-
-Etap 1 - preselekcja:
-
-### 1. Jakość ekstrakcji danych (F1 Score) – 100%
-
-Ocena zgodności wyników z danymi referencyjnymi na nieznanym zbiorze testowym.
-
-Etap 2 - wybór finalny:
-
-### 1. Jakość ekstrakcji danych (F1 Score) – 50%
-
-Ocena zgodności wyników z danymi referencyjnymi na nieznanym zbiorze testowym.
-
-### 2. Elastyczność i możliwość rozbudowy rozwiązania – 50%
-
-Ocena uwzględniać będzie:
-* 1-20 pkt za moc modelu LLM. Im mocniejszy model liczony w bilionach parametrów, tym mniejsza ilość punktów. Innymi słowy, zależy nam na znalezieniu równowagi między skutecznością ekstrakcji, a kosztami.
-* 1-20 Łatwość dodawania nowych typów dokumentów i nowych klas danych bez konieczności przebudowy całego systemu.
-* 1-10 Inne ciekawe funkcje dodane do aplikacji (np. GUI)
+Challenge description: [Urzad-Zamowien-Publicznych/hacknation-2026](https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026).

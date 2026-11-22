@@ -1,0 +1,31 @@
+{
+  "mocodawca": [
+    {
+      "data": {
+        "imie_nazwisko": null,
+        "krs": "9997873010",
+        "nazwa": "Nordenix Automatyka Sp. z o.o.",
+        "nip": "9991785572",
+        "typ": "osoba_prawna"
+      },
+      "podpisujacy": [
+        {
+          "imie_nazwisko": "Monika Kaczmarek"
+        },
+        {
+          "imie_nazwisko": "Dorota Szulc"
+        }
+      ]
+    }
+  ],
+  "pelnomocnicy": [
+    {
+      "imie_nazwisko": "Sylwia Sikora",
+      "pesel": null
+    },
+    {
+      "imie_nazwisko": "Karolina Kaczmarek",
+      "pesel": null
+    }
+  ]
+}
