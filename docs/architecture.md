@@ -4,7 +4,7 @@ Docelowa architektura rozwiązania. Wiedza o typach dokumentów jest w `config/`
 
 ## 1. Cel i ograniczenia
 
-- Wejście: `input/<sprawa>/*.pdf` → wyjście: `output/<sprawa>/<ta sama nazwa>.json`.
+- Wejście: PDF-y w `input/` w dowolnym układzie folderów (inne pliki są pomijane) → wyjście: `output/<ta sama ścieżka>/<ta sama nazwa>.json`.
 - Typy: `odwolanie`, `pelnomocnictwo`, `przelew`; każdy inny dokument → `{}`.
 - Ocena: F1 na ukrytym zbiorze **realnych** spraw (dane treningowe są syntetyczne), mniejszy LLM = więcej punktów, nowe typy tylko przez konfigurację, przejrzystość ekstrakcji.
 - Python 3.13, CPU, 16 GB RAM, LLM przez API w EU/EOG.
@@ -25,7 +25,7 @@ API i UI używają tych samych eksperymentów co `src/run.py` (domyślnie `RUN_E
 
 ```mermaid
 flowchart TD
-    A["input/#lt;sprawa#gt;/*.pdf"] --> B["1. Tekst<br/>Docling: 2 pierwsze strony, tabele ACCURATE<br/>OCR, gdy brak warstwy tekstowej"]
+    A["input/**/*.pdf"] --> B["1. Tekst<br/>Docling: 2 pierwsze strony, tabele ACCURATE<br/>OCR, gdy brak warstwy tekstowej"]
     B --> C{"2. Klasyfikacja<br/>słowa kluczowe z config"}
     C -- "brak typu" --> E["{}"]
     C -- "niejednoznaczne" --> CL["LLM: wybór typu"] --> C2{typ?}

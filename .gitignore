@@ -8,8 +8,11 @@ __pycache__/
 # Generated / cached
 .cache/
 traces/
-dane/output/*
-!dane/output/.gitkeep
+# Documents to process and their results (the challenge expects input/ and output/ in the root)
+input/*
+!input/.gitkeep
+output/*
+!output/.gitkeep
 
 # Docling models (downloaded on first run)
 models/

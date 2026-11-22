@@ -6,7 +6,7 @@ Read this file fully before writing code. When a rule here conflicts with a habi
 ## 1. Project in one paragraph
 
 **Odwołania2json** (HackNation 2026, UZP challenge) converts KIO appeal cases (PDF) into JSON.
-Input: `<input>/<case>/*.pdf`. Output: `<output>/<case>/<same file name>.json`.
+Input: PDFs anywhere under `<input>` (other files are skipped). Output: `<output>/<same relative path>/<same file name>.json`.
 Each PDF is classified as one of the document types (`odwolanie`, `pelnomocnictwo`, `przelew`);
 anything else produces an empty JSON (`{}`). Expected output formats live in
 `dane/oczekiwane-json/`, training cases with reference JSONs in `dane/przyklad_NN/`
@@ -49,7 +49,7 @@ dane/                     data
   negatywne/              documents that must produce {}            (organiser, read-only)
   oczekiwane-json/        expected output formats                   (organiser, read-only)
   szablon-aplikacja/      organiser's sample input/output           (organiser, read-only)
-  input/  output/         application input and output; output holds ONLY scored JSON
+input/  output/           application input and output (root, as the challenge expects); output holds ONLY scored JSON
 eval/                     F1 evaluation and committed reports
 tests/                    pytest tests, mirroring module names (test_<module>.py)
 docs/                     architecture and "how to add a document type"

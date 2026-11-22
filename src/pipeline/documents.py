@@ -11,7 +11,7 @@ from src.text_extraction.models import ExtractedDocument
 
 @dataclass(frozen=True, slots=True)
 class InputDocument:
-    """One input PDF: `<input>/<case>/<file>.pdf`."""
+    """One input PDF; `case` is its folder relative to the input root ("" for files directly in it)."""
 
     case: str
     path: Path
@@ -19,7 +19,7 @@ class InputDocument:
     @property
     def label(self) -> str:
         """`<case>/<file>.pdf`, for logs and records."""
-        return f"{self.case}/{self.path.name}"
+        return f"{self.case}/{self.path.name}" if self.case else self.path.name
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,14 +41,29 @@ class DocumentResult:
         return cls(document=document, doc_type=None, data={}, error=error)
 
 
-def find_documents(root: Path, pattern: str = "*/*.pdf") -> list[InputDocument]:
+def find_documents(root: Path, pattern: str) -> list[InputDocument]:
     """PDFs matching `pattern` under `root`, sorted for deterministic runs.
 
     The case is the PDF's folder relative to `root` (`<case>` for `<input>/<case>/*.pdf`,
     `odwolania/0001` for nested layouts), so cases stay unique and outputs mirror the input tree.
     """
-    return [InputDocument(case=path.parent.relative_to(root).as_posix(), path=path)
-            for path in sorted(root.glob(pattern))]
+    return [_input_document(root, path) for path in sorted(root.glob(pattern))]
+
+
+def find_input_documents(root: Path) -> tuple[list[InputDocument], list[Path]]:
+    """Every PDF under `root` at any depth (".pdf" in any case), and the other files, which are skipped.
+
+    Hidden files and folders (".DS_Store", ".gitkeep") are ignored.
+    """
+    files = sorted(path for path in root.rglob("*")
+                   if path.is_file() and not any(part.startswith(".") for part in path.relative_to(root).parts))
+    pdfs = [path for path in files if path.suffix.lower() == ".pdf"]
+    return [_input_document(root, path) for path in pdfs], [path for path in files if path.suffix.lower() != ".pdf"]
+
+
+def _input_document(root: Path, path: Path) -> InputDocument:
+    case = path.parent.relative_to(root).as_posix()
+    return InputDocument(case="" if case == "." else case, path=path)
 
 
 def write_result(result: DocumentResult, output_dir: Path) -> Path:

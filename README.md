@@ -1,75 +1,153 @@
 # Odwołania2json
 
-**Od dokumentów do danych. Inteligentna transformacja odwołań KIO do modelu JSON**
+**From documents to data. Intelligent transformation of KIO appeals into a JSON model**
 
-# Krótki opis wyzwania
+# Running the project
 
-Każdego roku do systemu zamówień publicznych trafiają tysiące dokumentów zawierających kluczowe informacje o postępowaniach, wykonawcach, pełnomocnikach i czynnościach zamawiających. Najczęściej są to dokumenty tekstowe z kluczowymi, jednak ułożonymi w przeróżny sposób, informacjami z reguły na pierwszych trzech stronach. Celem wyzwania jest stworzenie rozwiązania, które automatycznie zamieni wielodokumentową sprawę administracyjną w spójny, ustrukturyzowany model danych JSON gotowy do dalszego wykorzystania przez systemy informatyczne administracji publicznej.
+Requirements: Python 3.13+, no GPU. The `czynnosc_powod_id` field (reason for the appeal) and names in the nominative case are decided by the **Bielik-11B** model through the PSNC API (servers in Poland), which needs a key in the `.env` file. Without a key you can run the variant without an LLM (`rules-v1`, see below).
 
-# 1. Wprowadzenie
+## Installation
 
-Urząd Zamówień Publicznych odpowiada za funkcjonowanie systemu zamówień publicznych w Polsce oraz wspiera uczestników rynku w prawidłowym stosowaniu przepisów prawa. Jednym z elementów tego systemu są postępowania odwoławcze prowadzone przed Krajową Izbą Odwoławczą.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+echo "LLM_API_KEY=<key>" > .env    # LLM API key
+```
 
-Sprawa odwoławcza nie jest pojedynczym dokumentem. Stanowi zbiór wielu powiązanych ze sobą dokumentów zawierających informacje o wykonawcach, zamawiających, pełnomocnikach, postępowaniach, płatnościach, czynnościach procesowych i innych elementach wymagających dalszego przetwarzania.
+On the first run, the Docling models (page layout, tables, OCR – about 0.7 GB) are downloaded into the `models/` folder; later runs work without downloading.
 
-Obecnie większość takich dokumentów występuje w postaci plików PDF o zróżnicowanej strukturze. Część z nich powstaje elektronicznie, część jest wynikiem skanowania dokumentów papierowych. Informacje niezbędne do dalszej obsługi sprawy są rozproszone pomiędzy wieloma dokumentami i często zapisane w różny sposób.
+## 1. Processing a folder of documents (locally, without a server)
 
-Dla człowieka zrozumienie takiej dokumentacji jest stosunkowo proste. Dla systemów informatycznych stanowi jednak duże wyzwanie. Aby możliwa była automatyzacja dalszych procesów, dane muszą zostać najpierw przekształcone do postaci ustrukturyzowanej.
+Put the PDFs in the `input/` folder – in any layout: directly in it, in case folders, or nested deeper – and run:
 
-W praktyce oznacza to konieczność przejścia od modelu:
+```bash
+python -m src.run
+```
 
-**wiele dokumentów PDF → analiza treści → identyfikacja informacji → model danych JSON**
+```
+input/                           output/
+├── loose.pdf              ──►   ├── loose.json
+├── case1/                       ├── case1/
+│   ├── odwolanie.pdf            │   ├── odwolanie.json
+│   └── przelew.PDF              │   └── przelew.json
+└── archive/2026/                └── archive/2026/
+    └── pelnomocnictwo.pdf           └── pelnomocnictwo.json
+```
 
-Wyzwanie dotyczy zatem budowy rozwiązania, które pozwoli automatycznie przekształcać wielodokumentowe sprawy administracyjne w kanoniczny model danych możliwy do dalszego wykorzystania przez systemy administracji publicznej.
+- Every PDF (`.pdf` in any letter case) gets a JSON with the same name, at the same relative path in `output/`. A document that is not an appeal, a power of attorney or a bank transfer confirmation gets `{}`.
+- Other files are skipped (the log says how many); hidden files such as `.DS_Store` are ignored.
+- The source of every value (rule or LLM task, page, text snippet) is written separately to `traces/production/`, in the same tree.
+- A different input or output folder: change two constants at the top of `src/run.py`:
 
-Najciekawsze rozwiązania mają szansę stać się podstawą pilotażowych wdrożeń realizowanych przez Urząd Zamówień Publicznych.
+  ```python
+  INPUT_DIR = Path("/path/to/pdfs")
+  OUTPUT_DIR = Path("/path/to/results")
+  ```
 
-# 2. Wyzwanie
+- Without an LLM (no API key): set `RUN_EXPERIMENT = "rules-v1"` in `src/run.py`.
 
-Zaprojektuj i zaimplementuj rozwiązanie, które:
+## 2. API server (Swagger)
 
-1.  przyjmie dokument PDF składający się na odwołanie: dokument z treścią odwołania, pełnomocnictwo, dokument potwierdzenia przelewu
-2.  rozpozna rodzaj dokumentu
-3.  wyodrębni informacje biznesowe istotne dla danego typu dokumentu,
-4.  wygeneruje JSON dla każdego dokumentu zgodny z https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026/blob/main/oczekiwane-json
+```bash
+python -m uvicorn src.api:app --port 8000
+```
 
-Szczegółowa struktura danych:
+Documentation and endpoint testing in the browser: **http://localhost:8000/docs** (Swagger UI; also `/redoc` and the `/openapi.json` schema).
+
+| Endpoint | What it does |
+|---|---|
+| `GET /health` | whether the server is running |
+| `GET /experiments` | available processing variants (default `hybrid-v1`, without an LLM `rules-v1`) |
+| `POST /documents?experiment=hybrid-v1` | one or more PDFs → for each: document type, output JSON, source of every value |
+
+```bash
+curl -F "files=@input/case1/odwolanie.pdf" -F "files=@input/case1/przelew.pdf" \
+     "http://localhost:8000/documents?experiment=hybrid-v1"
+```
+
+Uploaded files are processed in a temporary folder – nothing is written to `output/`.
+
+## 3. Web interface (optional)
+
+With the API server running, in a second terminal:
+
+```bash
+python -m streamlit run src/web_app.py
+```
+
+**http://localhost:8501** – drop in PDFs, choose a variant, click "Przetwórz" (Process); view the JSON and the source of every value, download single files or everything as a ZIP.
+
+More: architecture and quality results – [docs/architecture.md](docs/architecture.md), adding a new document type with configuration only – [docs/nowy_typ_dokumentu.md](docs/nowy_typ_dokumentu.md) (both in Polish).
+
+# Short description of the challenge
+
+Every year, thousands of documents containing key information about procurement procedures, contractors, attorneys and actions of contracting authorities enter the public procurement system. Most often these are text documents whose key information is laid out in many different ways, usually on the first three pages. The goal of the challenge is to build a solution that automatically turns a multi-document administrative case into a consistent, structured JSON data model ready for further use by public administration IT systems.
+
+# 1. Introduction
+
+The Public Procurement Office (Urząd Zamówień Publicznych) is responsible for the functioning of the public procurement system in Poland and supports market participants in applying the law correctly. One element of this system is appeal proceedings before the National Appeal Chamber (Krajowa Izba Odwoławcza, KIO).
+
+An appeal case is not a single document. It is a set of many related documents containing information about contractors, contracting authorities, attorneys, procedures, payments, procedural actions and other elements that require further processing.
+
+Today, most of these documents are PDF files with varied structure. Some are created electronically, others are scans of paper documents. The information needed to handle a case is spread across many documents and is often written in different ways.
+
+For a person, understanding such documentation is relatively easy. For IT systems, however, it is a big challenge. To automate further processes, the data must first be transformed into a structured form.
+
+In practice, this means moving from the model:
+
+**many PDF documents → content analysis → information identification → JSON data model**
+
+The challenge is therefore about building a solution that automatically transforms multi-document administrative cases into a canonical data model that public administration systems can use further.
+
+The most interesting solutions may become the basis for pilot deployments carried out by the Public Procurement Office.
+
+# 2. The challenge
+
+Design and implement a solution that:
+
+1.  takes a PDF document that is part of an appeal: the document with the content of the appeal, a power of attorney, a bank transfer confirmation
+2.  recognises the type of the document
+3.  extracts the business information relevant to that document type,
+4.  generates a JSON for each document that conforms to https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026/blob/main/oczekiwane-json
+
+Detailed data structure:
 https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026/blob/main/oczekiwane-json/odwolanie.json
 
-zestawy treningowe:
+training sets:
 https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026/blob/main/dane
 
-# 3. Oczekiwany rezultat
+# 3. Expected result
 
-Oczekiwanym rezultatem jest działająca aplikacja ładująca plik PDF i zwracająca pliki JSON w ustalonym formacie i strukturze.
+The expected result is a working application that loads a PDF file and returns JSON files in the agreed format and structure.
 
-Rozwiązanie powinno zawierać:
+The solution should include:
 
-### Moduł przetwarzania dokumentów
+### Document processing module
 
-Odpowiedzialny za:
+Responsible for:
 
-- analizę dokumentów,
+- analysing documents,
 
-- klasyfikację dokumentów na podstawie ich zawartości (uwaga! nazwa pliku może być różna - nie sugerujcie się nazwą pliku),
+- classifying documents based on their content (note! the file name may vary – do not rely on the file name),
 
-- ekstrakcję informacji,
+- extracting information,
 
-- budowę modelu danych.
+- building the data model.
 
-### Interfejs wykonawczy
+### Execution interface
 
-Interfejs umożliwiający uruchomienie działania aplikacji poprzez CLI, wrapper script (np. plik ```start.bat```), lub inne analogiczne rozwiązanie.
+An interface that allows running the application through a CLI, a wrapper script (e.g. a ```start.bat``` file) or another similar solution.
 
-Dodanie do aplikacji GUI będzie dodatkowo punktowane, ale nie jest wymagane. Istotniejsza jest skuteczność identyfikacji informacji.
+Adding a GUI to the application will earn extra points, but is not required. The effectiveness of identifying information is more important.
 
-### Foldery input/output
+### Input/output folders
 
-Foldery o nazwie ```input``` oraz ```output```, znajdujące się w folderze głównym aplikacji. Folder ```input``` użyty zostanie do przekazywania analizowanych plików do aplikacji, podczas gdy folder ```output``` zawierać będzie wynikowe pliki JSON.
+Folders named ```input``` and ```output```, located in the root folder of the application. The ```input``` folder will be used to pass the analysed files to the application, while the ```output``` folder will contain the resulting JSON files.
 
-### Wynik działania
+### Output
 
-Pliki JSON w folderze ```./output```, ułożone w strukturze drzewa, gdzie każdy wynikowy **JSON nazwany jest tak samo jak plik z katalogu input któremu odpowiada**:
+JSON files in the ```./output``` folder, arranged in a tree structure, where each resulting **JSON is named the same as the file in the input folder it corresponds to**:
 
 ```
 │output
@@ -100,93 +178,93 @@ Pliki JSON w folderze ```./output```, ułożone w strukturze drzewa, gdzie każd
 ...
 ```
 
-# 4. Wymagania formalne
+# 4. Formal requirements
 
-Projekt przesyłany do oceny powinien zawierać:
+The project submitted for evaluation should include:
 
-- tytuł projektu,
+- the project title,
 
-- Link do GitHub działającego prototypu umożliwiający wgranie dokumentów i odczytanie rezultatów ekstrakcji informacji.
+- a GitHub link to a working prototype that allows uploading documents and reading the results of information extraction.
 
-Dodatkowo uczestnicy mogą dostarczyć:
+Additionally, participants may provide:
 
-- repozytorium projektu,
+- the project repository,
 
-- dokumentację techniczną w tym opis wykorzystanego LLM,
+- technical documentation, including a description of the LLM used,
 
-- wyniki własnych testów jakości.
+- the results of their own quality tests.
 
-# 5. Wymagania techniczne
+# 5. Technical requirements
 
-Rozwiązanie musi:
+The solution must:
 
-- być opracowane w języku **Python 3.13+**
-  
-- zawierać plik ```requirements.txt``` pozwalający na szybkie zainstalowanie pozostałych zależności projektu (np. poprzez ```pip install```)
+- be developed in **Python 3.13+**
 
-- wykorzystywać wyłącznie komponenty open source (w tym otwarto-źródłowe modele językowe),
+- include a ```requirements.txt``` file that allows quick installation of the remaining project dependencies (e.g. with ```pip install```)
 
-- umożliwiać uruchomienie w środowisku lokalnym (on-premise) bez GPU (LLM po API).
+- use only open-source components (including open-source language models),
 
-Szczególnie premiowane będą rozwiązania:
+- be able to run in a local (on-premise) environment without a GPU (LLM through an API).
 
-- umożliwiające konfigurację nowych klas dokumentów bez modyfikacji kodu źródłowego (jedynie przez pliki konfiguracyjne),
+Solutions that are especially rewarded:
 
-- wspierające transparentność procesu ekstrakcji danych.
+- allow configuring new document classes without modifying the source code (only through configuration files),
 
-# 6. Sposób testowania i walidacji
+- support transparency of the data extraction process.
 
-Ocena zostanie przeprowadzona na dwóch zbiorach danych:
+# 6. Testing and validation
 
-### Zbiór treningowy
+The evaluation will be carried out on two datasets:
 
-Udostępniony uczestnikom podczas realizacji wyzwania dostępny w katalogu dane. Zbiór danych zawiera też kategorie dokumentów, które NIE powinny być zidentyfikowane (zwrócić pusty plik `.json`).
+### Training set
 
-dane negatywne (które nie powinny zostać sklasyfikowane) umieszczone zostały w wybranych przykładach oraz w katalogu https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026/tree/main/dane/negatywne.
+Provided to participants during the challenge, available in the dane directory. The dataset also contains categories of documents that should NOT be identified (they should return an empty `.json` file).
 
-### Zbiór testowy
+Negative data (documents that should not be classified) is placed in selected examples and in the https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026/tree/main/dane/negatywne directory.
 
-Nieudostępniany uczestnikom.
+### Test set
 
-Zbiór testowy będzie zawierał kompletne sprawy administracyjne przygotowane przez organizatora.
+Not shared with participants.
 
-Wyniki wygenerowane przez rozwiązanie zostaną porównane z zestawem danych referencyjnych przygotowanym przez ekspertów merytorycznych.
+The test set will contain complete administrative cases prepared by the organiser.
 
-Podstawową miarą jakości będzie [wskaźnik F1](https://en.wikipedia.org/wiki/F-score).
+The results generated by the solution will be compared with a reference dataset prepared by subject-matter experts.
 
-## Parametry maszyny na której będą testowane rozwiązania
-Jest ok. 30 zespołów zainteresowanych. Musimy zmienić planowany sposób oceny. Stay tuned.
+The main quality measure will be the [F1 score](https://en.wikipedia.org/wiki/F-score).
 
-Dostarczone rozwiązanie, jeśli korzysta z LLM to powinno korzystać z API i być dostarczone z kluczem API. Obiecujemy nie wykorzystywać w innym celu niż proces testowy. API musi być świadczone przez firmę która posiada określony zakres i miejsce przetwarzania danych w swojej Polityce Prywatności, i z serwerów znajdujących się w EU/EOG.
+## Parameters of the machine the solutions will be tested on
+About 30 teams are interested. We have to change the planned evaluation method. Stay tuned.
 
-# 7. Kryteria oceny
+If the delivered solution uses an LLM, it should use an API and be delivered with an API key. We promise not to use it for any purpose other than the testing process. The API must be provided by a company whose Privacy Policy states the scope and location of data processing, and from servers located in the EU/EEA.
 
-Etap 1 - preselekcja:
+# 7. Evaluation criteria
 
-### 1. Jakość ekstrakcji danych (F1 Score) – 100%
+Stage 1 – preselection:
 
-Ocena zgodności wyników z danymi referencyjnymi na nieznanym zbiorze testowym.
+### 1. Data extraction quality (F1 score) – 100%
 
-Etap 2 - wybór finalny:
+Evaluation of how well the results match the reference data on the unknown test set.
 
-### 1. Jakość ekstrakcji danych (F1 Score) – 50%
+Stage 2 – final selection:
 
-Ocena zgodności wyników z danymi referencyjnymi na nieznanym zbiorze testowym.
+### 1. Data extraction quality (F1 score) – 50%
 
-### 2. Elastyczność i możliwość rozbudowy rozwiązania – 50%
+Evaluation of how well the results match the reference data on the unknown test set.
 
-Ocena uwzględniać będzie:
-* 1-20 pkt za moc modelu LLM. Im mocniejszy model liczony w miliardach parametrów, tym mniejsza ilość punktów. Innymi słowy, zależy nam na znalezieniu równowagi między skutecznością ekstrakcji, a kosztami. Poniżej więcej info.
-* 1-20 Łatwość dodawania nowych typów dokumentów i nowych klas danych bez konieczności przebudowy całego systemu.
-* 1-10 Inne ciekawe funkcje dodane do aplikacji (np. GUI)
+### 2. Flexibility and extensibility of the solution – 50%
 
-#### Sposób punktacji LLM
-W wyniku dyskusji z uczestnikami i zgłoszeń o potencjalnych sposobach manipulacji, pracujemy nad nowymi wytycznymi. stay tuned. 
+The evaluation will include:
+* 1–20 points for the power of the LLM. The more powerful the model, measured in billions of parameters, the fewer points. In other words, we want to find a balance between extraction effectiveness and costs. More information below.
+* 1–20 points for how easy it is to add new document types and new data classes without rebuilding the whole system.
+* 1–10 points for other interesting features added to the application (e.g. a GUI)
 
-# Wyjątki
+#### LLM scoring
+Following discussions with participants and reports of potential ways of manipulation, we are working on new guidelines. Stay tuned.
 
-## OCR po API
-Możecie wykorzystać OCR lokalny lub przez API. Jeśli przez API -> jego parametry będą liczone jak dla LLM i brane pod uwagę w procesie oceny.
+# Exceptions
 
-## Maksymalny czas przetwarzania
-Wasze rozwiązanie będzie testowane na 150 plikach PDF. Maksymalny czas przetwarzania całego tego zbioru to 45 minut.
+## OCR through an API
+You may use local OCR or OCR through an API. If through an API, its parameters will be counted as for an LLM and taken into account in the evaluation.
+
+## Maximum processing time
+Your solution will be tested on 150 PDF files. The maximum processing time for the whole set is 45 minutes.

@@ -18,7 +18,7 @@ from src.experiments.experiment import Experiment, select_experiments
 from src.experiments.runner import ExperimentRunner
 from src.inference.llm_client import LlmSettings
 from src.pipeline.config import PipelineConfig
-from src.pipeline.documents import find_documents, write_result, write_trace
+from src.pipeline.documents import find_input_documents, write_result, write_trace
 from src.pipeline.null_pipeline import NullPipeline
 from src.pipeline.staged_pipeline import StagedPipeline
 from src.text_extraction.models import ConversionSettings
@@ -27,6 +27,8 @@ from src.workspace import Workspace
 ROOT = Path(__file__).resolve().parents[1]
 
 # --- Settings ---------------------------------------------------------------
+INPUT_DIR = ROOT / "input"  # PDFs to process, in any folder layout (other files are skipped)
+OUTPUT_DIR = ROOT / "output"  # results mirror the input tree: <OUTPUT_DIR>/<same path>/<same name>.json
 MODE: Literal["run", "eval"] = "run"
 RUN_EXPERIMENT = "hybrid-v1"  # pipeline used in MODE = "run"
 EVAL_EXPERIMENTS = ["rules-v1", "hybrid-v1"]  # evaluated in this order in MODE = "eval"
@@ -41,8 +43,8 @@ ENV_FILE = ROOT / ".env"  # secrets such as LLM_API_KEY; git-ignored
 
 WORKSPACE = Workspace(
     root=ROOT,
-    input_dir=ROOT / "dane" / "input",
-    output_dir=ROOT / "dane" / "output",
+    input_dir=INPUT_DIR,
+    output_dir=OUTPUT_DIR,
     doc_types_dir=ROOT / "config" / "doc_types",
     models_dir=ROOT / "models",
     cache_dir=ROOT / ".cache",
@@ -128,8 +130,13 @@ def load_env_file(path: Path) -> None:
 
 def process_input(experiment: Experiment, workspace: Workspace) -> None:
     """Production run: one JSON per input PDF."""
-    documents = find_documents(workspace.input_dir)
-    logger.info("Processing %d documents from %s with %s", len(documents), workspace.input_dir, experiment.name)
+    if not workspace.input_dir.is_dir():
+        raise SystemExit(f"Input folder not found: {workspace.input_dir} (set INPUT_DIR in src/run.py)")
+    documents, skipped = find_input_documents(workspace.input_dir)
+    if skipped:
+        logger.warning("Skipping %d files that are not PDFs, e.g. %s", len(skipped),
+                       [path.relative_to(workspace.input_dir).as_posix() for path in skipped[:5]])
+    logger.info("Processing %d PDFs from %s with %s", len(documents), workspace.input_dir, experiment.name)
     pipeline = experiment.build_pipeline(workspace)
     for index, result in enumerate(pipeline.run(documents), start=1):
         write_result(result, workspace.output_dir)
